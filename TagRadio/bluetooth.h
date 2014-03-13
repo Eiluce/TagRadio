@@ -10,7 +10,6 @@ class Bluetooth : public QObject
     Q_OBJECT
 public:
     Bluetooth();
-    void startScan();
     ~Bluetooth();
 private :
     QBluetoothDeviceDiscoveryAgent *discoveryAgent;
