@@ -4,6 +4,7 @@
 #include <QBluetoothDeviceInfo>
 #include <QBluetoothDeviceDiscoveryAgent>
 #include <QObject>
+#include <QLabel>
 
 class Bluetooth : public QObject
 {

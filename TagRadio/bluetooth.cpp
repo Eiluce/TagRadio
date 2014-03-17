@@ -19,6 +19,7 @@ Bluetooth::Bluetooth()
 void Bluetooth::deviceDiscovered(const QBluetoothDeviceInfo &device)
 {
     cout << "Found new device:" << device.name().toStdString() << '(' << device.address().toString().toStdString() << ')' << endl;
+    cout << "RSSI : " << device.rssi() << endl;
 }
 
 Bluetooth::~Bluetooth()
