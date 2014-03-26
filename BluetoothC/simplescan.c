@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     if( num_rsp < 0 ) 
     perror("hci_inquiry");
 
-    hci_write_inquiry_transmit_power_level(sock, 0, 1000);
+    hci_write_inquiry_transmit_power_level(sock, 0.1, 1000);
 
     cr = malloc(sizeof(*cr) + sizeof(struct hci_conn_info));
     if (!cr) {

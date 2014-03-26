@@ -1,0 +1,76 @@
+  ---------------------------
+  - Described function(s) : -
+  ---------------------------
+
+  int hci_send_cmd(int sock, uint16_t ogf, uint16_t ocf, uint8_t plen, void *param);
+
+  Needed librarie(s) :
+
+  #include <bluetooth/hci.h>
+  #include <bluetooth/hci_lib.h> (?)
+
+  * MAIN PURPOSE : send a command to the BT microcontroller.
+  The command is sent by a formated packet, see the bluetooth spec' 
+  for further information. Thanks to the given arguments, this function
+  compute a command packet and send it to the controller.
+  -> parameters :
+    - int sock : a socket descriptor (the socket has to be open).
+    - uintl16_t ogf : the Opcode Group Field that specifies the general category the command falls into.
+    - uint16_t ocf : the Opcode Command Field that specifies the actual command.
+    - uint8_t plen : the length of the command parameters "param".
+    - void *param : a buffer containing the command parameters (a.k.a CP).
+  * NOTE :
+  Calling "read()" on an open HCI socket waits for and receives the next event from the microcontroller.
+  An event consists of a header field specifying the event type, and the event parameters (to see
+  the full description of an HCI Event packet, see the spec').
+  A program that requires asynchronous device detection would, for example, send a command with
+  ocf of "OCF_INQUIRY" and wait for events of type "EVT_INQUIRY_RESULT" and "EVT_INQUIRY_COMPLETE".
+  The specific codes to use for each command and event are defined in the specifications and
+  in the BlueZ source code. 
+  
+  Informations gathered from : http://people.csail.mit.edu/albert/bluez-intro/x682.html.
+
+-----------------------------------------------------------------------------------------------------------------
+
+  ---------------------------
+  - Described function(s) : -
+  ---------------------------
+
+  int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
+  int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
+
+  Needed librarie(s) :
+
+  #include <sys/types.h>          
+  #include <sys/socket.h>
+
+  * MAIN PURPOSE : manipulating socket options.
+  -> getsockopt() parameters :
+     - int sockfd : a socket descriptor.
+     - int level : the level at which the option resides. That is to say that we need to specify
+     the level (in the protocol stack) of the used protocol. In our case, we might want to use
+     the "SOL_HCI" level which corresponds to the HCI protocol.
+     - int optname : the name of the option to be modified. That name depends on the used protocol but
+     in our case, we might want to modify for instance, the "HCI_FILTER" option.
+     - void *optval : a buffer in which the value for the requested option(s) are to be returned.
+     - socklen_t *optlen : initially contains the size of the buffer pointed by "optval" and
+     modified on return to indicate the actual size of the returned value. If no option value
+     is to be returned, optval may be NULL.
+   -> setsockopt() parameters :
+     - int sockfd : same as "getsockopt()" parameter.
+     - int level : same as "getsockopt()" parameter.
+     - int optname : same as "getsockopt()" parameter.
+     - const void *optval : contains the options values (buffer).
+     - socklen_t optlen : contains the size of the previous buffer.
+   * RETURN VALUE :
+     - On succes : 0.
+     - On error : -1 + errno set appropriately (see the link above).
+   
+  Informations gathered from : http://linux.die.net/man/2/setsockopt.
+  
+-----------------------------------------------------------------------------------------------------------------
+
+ POLL description : http://man7.org/linux/man-pages/man2/poll.2.html.
+
+
+ 

@@ -1,0 +1,5 @@
+* Installation des libs bluetooth : 
+  -> sudo apt-get install libbluetooth-dev
+  
+* Connaître sa version de BlueZ :
+  -> dpkg --status bluez | grep '^Version:'

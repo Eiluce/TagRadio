@@ -1,0 +1,31 @@
+/*struct hci_filter {
+         unsigned long type_mask;
+         unsigned long event_mask[2];
+         __le16 opcode;
+ };
+*/
+
+/*#define OCF_INQUIRY             0x0001
+ struct hci_cp_inquiry { // cf spec' p706
+         __u8     lap[3]; // LAP = Link Access Procedure (Protocol ?)
+         __u8     length; // Inquiry Duration : length*1.28s, max duration : 0x30*1.28s.
+         __u8     num_rsp; // Max responses number (0 => unlimitated)
+ } __attribute__ ((packed));
+*/
+
+/*struct hci_event_hdr { // Stands for event_header ?
+         __u8    evt;
+         __u8    plen;
+ } __packed;
+*/
+
+/*#define HCI_EV_INQUIRY_RESULT_WITH_RSSI 0x22
+ struct inquiry_info_with_rssi {
+         bdaddr_t bdaddr;
+         __u8     pscan_rep_mode;
+         __u8     pscan_period_mode;
+         __u8     dev_class[3];
+         __le16   clock_offset;
+         __s8     rssi;
+ } __packed;
+*/ 
