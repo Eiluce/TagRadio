@@ -9,13 +9,21 @@
 void hci_compute_filter(struct hci_filter *flt, ...) {
 	va_list  pa;
 	uint32_t event;
+	
+	if (flt == NULL) {
+		fprintf(stderr, "hci_compute_filter warning : invalid filter.\n");
+		return;
+	}
 
 	hci_filter_clear(flt); 
-	hci_filter_set_ptype(HCI_EVENT_PKT, flt); // ATTENTION PEUT ËTRE A CHANGER : DONNER LE CHOIX CAR SUREMENT PAS ASSEZ GENERAL ? 	// HCI_EVENT_PKT = HCI Event Packet.
+	hci_filter_set_ptype(HCI_EVENT_PKT, flt); // ATTENTION PEUT ËTRE A CHANGER : DONNER LE CHOIX CAR SUREMENT PAS ASSEZ GENERAL ? 	
+	// HCI_EVENT_PKT = HCI Event Packet.
 
 	va_start(pa, flt);
-	while (event = va_arg(pa, uint32_t) != 0) {
+	event = va_arg(pa, uint32_t);
+	while (event != 0) {
 		hci_filter_set_event(event, flt);
+		event = va_arg(pa, uint32_t);
 	}
 	va_end(pa);
 }
@@ -46,27 +54,28 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	// Starting the inquiry :
 	fprintf(stderr, "Starting the scanning inquiry...");
 
-	int16_t nb_rsp = hci_inquiry(hci_socket->dev_id, duration, max_rsp, NULL, &ii, flags);
-	if(nb_rsp < 0) {
+	int16_t num_rsp = hci_inquiry(hci_socket->dev_id, duration, max_rsp, NULL, &ii, flags);
+	if(num_rsp <= 0) {
 		fprintf(stderr, " No device found.\n");
 		free(ii);
 		if (new_socket) {
 			close_hci_socket(hci_socket);
 			free(hci_socket);
-			return res;
 		}
+		return res;
 	}
 
 	fprintf(stderr, " [DONE]\n"); // PAS DONE ICI, IL FAUDRAIT LE METTRE QUAND ON A 
 	//RECU L'EVENT DE FIN DE COMMAND !!! (ICI, INQUIRY COMPLETE !).
-	
-	hci_device_t *device_table = calloc(nb_rsp, sizeof(hci_device_t));
 
-	for (uint16_t i = 0; i < nb_rsp; i++) {
+	hci_device_t *device_table = calloc(num_rsp, sizeof(hci_device_t));
+
+	for (uint16_t i = 0; i < num_rsp; i++) {
+		memset(&(device_table[i]), 0, sizeof(hci_device_t));
 		device_table[i].mac = ii[i].bdaddr;
-		memset(device_table[i].real_name, 0, NAME_LENGTH);
-		if (hci_read_remote_name(hci_socket->sock, &(ii[i].bdaddr), NAME_LENGTH, 
+		if (hci_read_remote_name(hci_socket->sock, &(device_table[i].mac), NAME_LENGTH, 
 					 device_table[i].real_name, 0) < 0) {
+			perror("hci_read_remote_name");
 			strcpy(device_table[i].real_name, "[UNKNOWN]");
 		}
 		device_table[i].add_type = 0x12; // Personal code to indicate that this data wasn't available.
@@ -81,7 +90,7 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	}
 
 	res.device = device_table;
-	res.length = nb_rsp;
+	res.length = num_rsp;
 
 	return res;
 }
@@ -141,7 +150,11 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	}
 	
 	// Applying the new filter :
-	if (set_hci_socket_filter(*hci_socket, flt) < 0) {
+	if (set_hci_socket_filter(*hci_socket, &flt) < 0) {
+		if (new_socket) {
+			close_hci_socket(hci_socket);
+			free(hci_socket);
+		}
 		return;
 	}
 
@@ -166,7 +179,7 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	cp.length = duration; 
 
 
-	printf("Starting inquiry with RSSI...\n");
+	fprintf(stderr, "Starting inquiry with RSSI...");
 
 	// Sending the inquiry's command to the HCI socket :
 	if (hci_send_cmd(hci_socket->sock, OGF_LINK_CTL, OCF_INQUIRY, INQUIRY_CP_SIZE, &cp) < 0) {
@@ -210,6 +223,9 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 			// MAINTENIR CORRESPONDANCE DEVICES DEJA RENCONTRES MAIS AU NIVEAU LE PLUS GLOBAL POSSIBLE POUR QU'ELLE SOIT ACCESSIBLE A TRAVERS TOUTES NOS FONCTIONS (gagne en efficacité !!) !!!!!!!!!!!!!
 
 			switch (event_header.evt) {
+			case EVT_CMD_COMPLETE:
+				fprintf(stderr, " [DONE] \n");
+				break;
 			case EVT_INQUIRY_RESULT_WITH_RSSI: // Code 0x22 
 				for (uint16_t i = 0; i < num_results; i++) {
 					hci_device_t hci_device;
@@ -236,12 +252,12 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 				break;
 
 			case EVT_INQUIRY_COMPLETE:
-				fprintf(stderr, "[DONE] \n");
+				fprintf(stderr, "Inquiry complete !\n");
 				canceled = 1;
 				break;
 				
 			default:
-				fprintf(stderr, "An unknown event occurred... \n");
+				fprintf(stderr, "An unknown event occurred : 0x%X\n", event_header.evt);
 				break;
 			}
 			
@@ -251,10 +267,10 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	if (new_socket) {
 		close_hci_socket(hci_socket);
 		free(hci_socket);
+	} else {
+		// Restoring the old filter :
+		set_hci_socket_filter(*hci_socket, &old_flt);
 	}
-	
-	// Restoring the old filter :
-	set_hci_socket_filter(*hci_socket, old_flt);
 }
 
 //------------------------------------------------------------------------------------
@@ -265,11 +281,9 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		     bdaddr_t *mac, uint8_t max_rsp, uint8_t scan_type, uint8_t scan_interval,
 		     uint8_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy) {
-	
-	int nb_rsp = 200;
+  
 
 	FILE *file = NULL;
-	file = fopen("./res_rssi.txt", "w");
 
 	fprintf(stderr, "1. Opening socket...");
 	char new_socket = 0;
@@ -301,7 +315,6 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 			   EVT_LE_ADVERTISING_REPORT,
 			   0);
 
-
 	/* Saving the old filter.
 	   This can be helpful in a case where we want to use a same socket for different purposes
 	   (even with multiple threads), we can replace the old filter and re-use it later.
@@ -314,7 +327,11 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 	// Applying the new filter :
 	fprintf(stderr, "3. Applying new filter...");
-	if (set_hci_socket_filter(*hci_socket, flt) < 0) {
+	if (set_hci_socket_filter(*hci_socket, &flt) < 0) {
+		if (new_socket) {
+			close_hci_socket(hci_socket);
+			free(hci_socket);
+		}
 		return;
 	}
 	fprintf(stderr, " [DONE]\n");
@@ -322,6 +339,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	fprintf(stderr, "4. Setting scan parameters...");
 	if(hci_le_set_scan_parameters(hci_socket->sock, scan_type, scan_interval, // cf p 1066 spec
 				      scan_window, own_add_type, scan_filter_policy, 0) < 0) { // last parameter is timeout (for reaching the controler).
+		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_parameters");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
@@ -335,6 +353,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 	fprintf(stderr, "5. Enabling scan...");
 	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x01, 0) < 0) { // Duplicate filtering ? (cf p1069)
+		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_enable");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
@@ -349,6 +368,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 	char canceled = 0;
 	int k = 0;
+	file = fopen("./res_rssi.txt", "w");
 
 	fprintf(stderr, "6. Checking response events...\n");
 	while(!canceled && k < max_rsp) {
@@ -408,7 +428,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 						strcpy(hci_device.real_name,"UNKNOWN");
 						strcpy(hci_device.custom_name, "UNKNOWN");
 						hci_device_display(hci_device);
-
+						fprintf(stdout, "%idb\n", *rssi);
 						fprintf(file, "%i\n", *rssi);
 					}
 					break;
@@ -433,7 +453,8 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		if (new_socket) {
 			close_hci_socket(hci_socket);
 			free(hci_socket);
-		}
+		}	
+		fclose(file);
 		return;
 	}
 	//	if (check_cmd_complete(hci_sock) == 0) {
@@ -443,10 +464,11 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	if (new_socket) {
 		close_hci_socket(hci_socket);
 		free(hci_socket);
+	} else {			
+		// Restoring the old filter :
+		set_hci_socket_filter(*hci_socket, &old_flt);
 	}
 	
 	fclose(file);
-	
-	// Restoring the old filter :
-	set_hci_socket_filter(*hci_socket, old_flt);
+
 }

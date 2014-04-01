@@ -1,12 +1,12 @@
 #include "hci_device.h"
 #include <stdio.h>
 
-
 #include <bluetooth/hci_lib.h>
 
 void hci_device_display(hci_device_t device) {
 	
 	char tmp[18]; 
+	memset(tmp, 0, 18);
 	ba2str((const bdaddr_t *)&(device.mac), tmp);
 
 	char address_type_mess[6] = {0};
@@ -29,4 +29,10 @@ void hci_device_display(hci_device_t device) {
 		device.custom_name);
 }
 
-	
+//------------------------------------------------------------------------------------
+
+void hci_device_table_display(hci_device_table_t device_table) {
+	for (uint32_t i = 0; i < device_table.length; i++) {
+		hci_device_display(device_table.device[i]);
+	}
+}

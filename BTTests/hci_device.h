@@ -20,5 +20,6 @@ typedef struct {
 } hci_device_table_t;
 
 extern void hci_device_display(hci_device_t device);
+extern void hci_device_table_display(hci_device_table_t device_table);
 
 #endif

@@ -12,13 +12,18 @@ typedef struct hci_socket_t {
 } hci_socket_t;
 
 
+// TODO : FAIRE UNE LISTE DE SOCKETS PAR DEV_ID !!
+
+
 extern hci_socket_t open_hci_socket(bdaddr_t *controler);
 extern void close_hci_socket(hci_socket_t *hci_socket);
 
 extern list_t *get_hci_socket_list(void);
-extern void close_all_sockets();
+extern void close_all_sockets(void);
 
 extern struct hci_filter get_hci_socket_filter(hci_socket_t hci_socket);
-extern int8_t set_hci_socket_filter(hci_socket_t hci_socket, struct hci_filter flt);
+extern int8_t set_hci_socket_filter(hci_socket_t hci_socket, struct hci_filter *flt);
+
+extern void display_hci_socket_list(void);
 
 #endif
