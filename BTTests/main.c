@@ -28,17 +28,20 @@ int main(int argc, char **argv)
 	fprintf(stderr, "\n---------------------------------\n");
 	fprintf(stderr, "- GETING RSSI MEASURES TEST (LE)-\n");
 	fprintf(stderr, "---------------------------------\n");
-	hci_LE_get_RSSI(&hci_socket1, NULL, 10, 0x00, 0x10, 0x10, 0x00, 0x00);
+	bdaddr_t test;
+	str2ba("1C:BA:8C:20:E9:1E", &test);
+	hci_LE_clear_white_list(NULL);
+	hci_LE_add_white_list(&hci_socket1, &test, 0x00); // 0x00 : PDA 
+	hci_LE_get_RSSI(&hci_socket1, NULL, 10, 0x00, 0x10, 0x10, 0x00, 0x01); // LE DERNIER 0x01 indique qu'on ne prend que les reponses matchant la liste blanche.
+	
 
 	fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- CLOSING SOCKETS TESTS -\n");
 	fprintf(stderr, "-------------------------\n");
-	fprintf(stderr, "Closing the  second opened socket (i.e the first in our list). \n");
-	fprintf(stderr, "%i %i\n", hci_socket1.dev_id, hci_socket1.sock);
-	fprintf(stderr, "%u \n", *((uint16_t *)&hci_socket1));
-
+	fprintf(stderr, "Closing the second opened socket. \n");
 	close_hci_socket(&hci_socket1);
 	display_hci_socket_list();
+
 	fprintf(stderr, "Closing all of the remaining sockets.\n");
 	close_all_sockets();
 	display_hci_socket_list();

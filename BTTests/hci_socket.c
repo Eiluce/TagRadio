@@ -30,10 +30,10 @@ hci_socket_t open_hci_socket(bdaddr_t *controler) {
 void close_hci_socket(hci_socket_t *hci_socket) {
 	if (hci_socket->sock >= 0) {
 		close(hci_socket->sock);
-		hci_socket->sock = -1;
 		hci_socket_t *listed_socket = list_search(&hci_socket_list,
 							  (const void *)hci_socket,
 							  sizeof(hci_socket_t));
+		hci_socket->sock = -1;
 		if (listed_socket == NULL) {
 			fprintf(stderr, "close_hci_scoket warning : this socket wasn't referenced yet.\n");
 			return;
