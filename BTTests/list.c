@@ -3,6 +3,12 @@
 #include <stdio.h>
 
 
+static inline char list_elt_equals(const void *elt1, const void *elt2, const size_t size) {
+	return (memcmp(elt1, elt2, size) == 0);
+}
+
+//------------------------------------------------------------------------------------
+
 void list_push(list_t **l, const void *elt, const size_t size) {
 	if (l==NULL) {
 		fprintf(stderr, "list_push error : invalid list reference.\n");
@@ -65,11 +71,8 @@ void *list_search(list_t ** l, const void *elt, const size_t size) {
 	void *res = NULL;
 	list_t *prev = *l;
 	list_t *tmp = *l;
-
 	while (tmp != NULL) {	
-		fprintf(stderr, "%u \n", *((uint16_t *)tmp->val));
-		if (memcmp(elt, tmp->val, size) == 0) {
-			fprintf(stderr, "WTF ????????????\n");
+		if (list_elt_equals(elt, tmp->val, size)) {
 			res = tmp->val;
 			if (tmp == *l) {
 				tmp = (*l)->next;

@@ -1,4 +1,5 @@
 #include "hci_controler.h"
+#include "hci_utils.h"
 #include <bluetooth/hci_lib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,11 +29,126 @@ void hci_compute_filter(struct hci_filter *flt, ...) {
 	va_end(pa);
 }
 
+//------------------------------------------------------------------------------------
+
+int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket) {
+	char new_socket = 0;
+	if (hci_socket == NULL) {
+		new_socket = 1;
+		hci_socket = malloc(sizeof(hci_socket_t));
+		*hci_socket = open_hci_socket(NULL);
+		if (hci_socket->sock < 0) {
+			return -1;
+		}
+	}
+
+	if (hci_le_clear_white_list(hci_socket->sock, 100) < 0) {
+		perror("hci_le_clear_white_list");
+		return -1;
+	}
+
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+
+	return 0;
+}
+
+//------------------------------------------------------------------------------------
+
+int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8_t add_type) {
+	char new_socket = 0;
+	
+	if (add == NULL) {
+		fprintf(stderr, "hci_LE_add_white_list error : NULL address.\n");
+		return -1;
+	}
+
+	if (hci_socket == NULL) {
+		new_socket = 1;
+		hci_socket = malloc(sizeof(hci_socket_t));
+		*hci_socket = open_hci_socket(NULL);
+		if (hci_socket->sock < 0) {
+			return -1;
+		}
+	}
+
+	if (hci_le_add_white_list(hci_socket->sock, add, add_type, 100) < 0) {
+		perror("hci_le_add_white_list");
+		return -1;
+	}
+
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+
+	return 0;
+}
+
+//------------------------------------------------------------------------------------
+
+int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8_t add_type) {
+	char new_socket = 0;
+
+	if (add == NULL) {
+		fprintf(stderr, "hci_LE_rm_white_list error : NULL address.\n");
+		return -1;
+	}
+
+	if (hci_socket == NULL) {
+		new_socket = 1;
+		hci_socket = malloc(sizeof(hci_socket_t));
+		*hci_socket = open_hci_socket(NULL);
+		if (hci_socket->sock < 0) {
+			return -1;
+		}
+	}
+
+	if (hci_le_rm_white_list(hci_socket->sock, add, add_type, 100) < 0) {
+		perror("hci_le_rm_white_list");
+		return -1;
+	}
+
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+
+	return 0;
+}
+
+//------------------------------------------------------------------------------------
+
+int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size) {
+	char new_socket = 0;
+	if (hci_socket == NULL) {
+		new_socket = 1;
+		hci_socket = malloc(sizeof(hci_socket_t));
+		*hci_socket = open_hci_socket(NULL);
+		if (hci_socket->sock < 0) {
+			return -1;
+		}
+	}
+
+	if (hci_le_read_white_list_size(hci_socket->sock, size, 100) < 0) {
+		perror("hci_le_get_white_list_size");
+		return -1;
+	}
+
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+
+	return 0;
+}
 
 //------------------------------------------------------------------------------------
 
 hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
-				    uint8_t duration, uint8_t max_rsp, long flags) {
+				    uint8_t duration, uint16_t max_rsp, long flags) {
 	
 	hci_device_table_t res;
 	res.device = NULL;
@@ -97,9 +213,8 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 
 //------------------------------------------------------------------------------------
 
-// PENSER A UTILISER LE PARAM D'ADRESSE !!!!
 void hci_get_RSSI(hci_socket_t *hci_socket,
-		  bdaddr_t *mac, uint8_t duration, uint8_t max_rsp) {
+		  bdaddr_t *mac, uint8_t duration, uint16_t max_rsp) {
 	
 
 	// HCI_Filter structure :
@@ -232,6 +347,9 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 				
 					bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter + 6*i); // @ on 6 bytes.
 					hci_device.mac = *rsp_mac;
+					if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
+							continue;
+					}
 					strcpy(hci_device.real_name, "UNKNOWN");
 					strcpy(hci_device.custom_name, "UNKNOWN");
 					hci_device.add_type  = 0x12;
@@ -245,7 +363,7 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 					   "page_scan_repetition_mode" etc...
 					*/
 					int8_t *rssi = (int8_t *)(event_parameter + (6+1+1+3+2)*num_results + i); 
-
+			
 					hci_device_display(hci_device);
 					fprintf(stdout, "%idb \n", *rssi);
 				}
@@ -275,11 +393,9 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 
 //------------------------------------------------------------------------------------
 
-// ATTENTION PENSER A CHECK VALEURS RSSI !!!!!!!!!!
 // TESTER SI ON RECOIT AUSSI DES PAQUEST NON LE (MODIFIER FILTRE)
-// TRAITER 0 MAX_RSP => INFINITE
 void hci_LE_get_RSSI(hci_socket_t *hci_socket,
-		     bdaddr_t *mac, uint8_t max_rsp, uint8_t scan_type, uint8_t scan_interval,
+		     bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint8_t scan_interval,
 		     uint8_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy) {
   
 
@@ -338,7 +454,8 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 	fprintf(stderr, "4. Setting scan parameters...");
 	if(hci_le_set_scan_parameters(hci_socket->sock, scan_type, scan_interval, // cf p 1066 spec
-				      scan_window, own_add_type, scan_filter_policy, 0) < 0) { // last parameter is timeout (for reaching the controler).
+				      scan_window, own_add_type, scan_filter_policy, 0) < 0) { 
+		// last parameter is timeout (for reaching the controler) 0 = infinity.
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_parameters");
 		if (new_socket) {
@@ -371,12 +488,11 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	file = fopen("./res_rssi.txt", "w");
 
 	fprintf(stderr, "6. Checking response events...\n");
-	while(!canceled && k < max_rsp) {
+	while(!canceled && (!(max_rsp > 0) || (k < max_rsp))) {
 		p.revents = 0;
 
-		//	fprintf(stderr, "******** %i ********\n", k);
 		// Polling the BT device for an event :
-		if (poll(&p, 1, -1) > 0) {
+		if (poll(&p, 1, 5000) > 0) {
 
 			// If an event occured, we store the HCI Event packet into our buffer :
 			int len = read(hci_socket->sock, buf, sizeof(buf));
@@ -401,7 +517,6 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 			case EVT_LE_META_EVENT: // Code 0x3E
 				switch (subevent_code) {
 				case EVT_LE_ADVERTISING_REPORT:
-					k++;
 					for (uint16_t i = 0; i < num_reports; i++) {
 						hci_device_t hci_device;
 						uint8_t *address_type;
@@ -413,6 +528,11 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 						bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter +
 										 num_reports*(1+1) +
 										 6*i); // @ on 6 bytes.
+						
+					
+						if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
+							continue;
+						}
 
 						// Length_data field :
 						uint8_t *length_data = (uint8_t *)(event_parameter +
@@ -421,6 +541,11 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 						// RSSI field :
 						int8_t *rssi = (int8_t *)(event_parameter + 
 									  (1+1+6+1+(*length_data))*num_reports + i); // rssi on 1byte
+						if (*rssi == 127) {
+							fprintf(stderr, "hci_le_get_rssi warning : RSSI measure unavailable.\n");
+						} else if (*rssi >= 21) {
+							fprintf(stderr, "hci_le_get_rssi error : Error while reading RSSI measure.\n");
+						}
 
 						// Display info :
 						hci_device.mac = *rsp_mac;
@@ -430,6 +555,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 						hci_device_display(hci_device);
 						fprintf(stdout, "%idb\n", *rssi);
 						fprintf(file, "%i\n", *rssi);
+						k++;
 					}
 					break;
 					
@@ -443,6 +569,9 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 				fprintf(stderr, "An unknown event occured : 0x%X\n", event_header.evt);
 				break;
 			}
+		} else {
+			fprintf(stderr, "hci_get_le_rssi warning : timeout expired.\n");
+			break;
 		}
 	}
 	fprintf(stderr, "Scan complete !\n");
@@ -472,3 +601,4 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	fclose(file);
 
 }
+
