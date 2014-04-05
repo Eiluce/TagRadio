@@ -1,0 +1,29 @@
+#! /bin/bash
+
+# $1 = nombre points.
+# $2 = scan interval : intervalle de temps entre deux scans (ms).
+# $3 = scan window : durée d'un scan (ms).
+# $4 = mesure de l'espace entre le récepteur et l'émetteur (m).
+
+NB_IMG=0;
+
+if [ $# != 4 ]; then
+    printf "Not enough parameters !\n";
+    exit -1;
+fi
+
+if [ ! -e "./bin/hci_test" ]; then
+    printf "Error : unexisting main program !\n";
+    exit -1
+fi
+
+./bin/hci_test $1 $2 $3;
+wait 
+
+for i in $(find ./stats/figures/ -type f -name "*.png"); do
+    NB_IMG=$((${NB_IMG} + 1));
+done;
+
+Rscript --no-save "./stats/RSSIStats.R" "./stats/res_rssi.txt" ${NB_IMG} $2 $3 $4 > /dev/null 
+
+exit 0

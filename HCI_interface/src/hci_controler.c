@@ -37,13 +37,20 @@ int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket) {
 		new_socket = 1;
 		hci_socket = malloc(sizeof(hci_socket_t));
 		*hci_socket = open_hci_socket(NULL);
-		if (hci_socket->sock < 0) {
-			return -1;
+	}
+	if (hci_socket->sock < 0) {
+		if (new_socket) {
+			free(hci_socket);
 		}
+		return -1;
 	}
 
 	if (hci_le_clear_white_list(hci_socket->sock, 100) < 0) {
 		perror("hci_le_clear_white_list");
+		if (new_socket) {
+			close_hci_socket(hci_socket);
+			free(hci_socket);
+		}
 		return -1;
 	}
 
@@ -69,13 +76,21 @@ int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint
 		new_socket = 1;
 		hci_socket = malloc(sizeof(hci_socket_t));
 		*hci_socket = open_hci_socket(NULL);
-		if (hci_socket->sock < 0) {
-			return -1;
-		}
 	}
+	if (hci_socket->sock < 0) {
+		if (new_socket) {
+			free(hci_socket);
+		}
+		return -1;
+	}
+
 
 	if (hci_le_add_white_list(hci_socket->sock, add, add_type, 100) < 0) {
 		perror("hci_le_add_white_list");
+		if (new_socket) {
+			close_hci_socket(hci_socket);
+			free(hci_socket);
+		}
 		return -1;
 	}
 
@@ -101,13 +116,20 @@ int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8
 		new_socket = 1;
 		hci_socket = malloc(sizeof(hci_socket_t));
 		*hci_socket = open_hci_socket(NULL);
-		if (hci_socket->sock < 0) {
-			return -1;
+	}
+	if (hci_socket->sock < 0) {
+		if (new_socket) {
+			free(hci_socket);
 		}
+		return -1;
 	}
 
 	if (hci_le_rm_white_list(hci_socket->sock, add, add_type, 100) < 0) {
 		perror("hci_le_rm_white_list");
+		if (new_socket) {
+			close_hci_socket(hci_socket);
+			free(hci_socket);
+		}
 		return -1;
 	}
 
@@ -127,13 +149,20 @@ int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size) {
 		new_socket = 1;
 		hci_socket = malloc(sizeof(hci_socket_t));
 		*hci_socket = open_hci_socket(NULL);
-		if (hci_socket->sock < 0) {
-			return -1;
+	}
+	if (hci_socket->sock < 0) {
+		if (new_socket) {
+			free(hci_socket);
 		}
+		return -1;
 	}
 
 	if (hci_le_read_white_list_size(hci_socket->sock, size, 100) < 0) {
 		perror("hci_le_get_white_list_size");
+		if (new_socket) {
+			close_hci_socket(hci_socket);
+			free(hci_socket);
+		}
 		return -1;
 	}
 
@@ -159,9 +188,12 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 		new_socket = 1;
 		hci_socket = malloc(sizeof(hci_socket_t));
 		*hci_socket = open_hci_socket(NULL);
-		if (hci_socket->sock < 0) {
-			return res;
+	}
+	if (hci_socket->sock < 0) {
+		if (new_socket) {
+			free(hci_socket);
 		}
+		return res;
 	}
 
 	// Creation of the inquiry_info table :
@@ -237,19 +269,19 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
  
 	hci_event_hdr event_header;
 
-	// Inquiry allowing us to deal with a RSSI value :
-	inquiry_info_with_rssi *info_rssi;
-
 	char new_socket = 0;
 	if (hci_socket == NULL) {
 		new_socket = 1;
 		hci_socket = malloc(sizeof(hci_socket_t));
 		*hci_socket = open_hci_socket(NULL);
-		if (hci_socket->sock < 0) {
-			return;
-		}
 	}
-
+	if (hci_socket->sock < 0) {
+		if (new_socket) {
+			free(hci_socket);
+		}
+		return;
+	}
+	
 	// Creating our filter :
 	hci_compute_filter(&flt, EVT_CMD_COMPLETE,
 			   EVT_INQUIRY_RESULT_WITH_RSSI,
@@ -407,9 +439,12 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		new_socket = 1;
 		hci_socket = malloc(sizeof(hci_socket_t));
 		*hci_socket = open_hci_socket(NULL);
-		if (hci_socket->sock < 0) {
-			return;
+	}
+	if (hci_socket->sock < 0) {
+		if (new_socket) {
+			free(hci_socket);
 		}
+		return;
 	}
 	fprintf(stderr, " [DONE]\n");
 
@@ -430,6 +465,8 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 			   EVT_LE_META_EVENT,
 			   EVT_LE_ADVERTISING_REPORT,
 			   0);
+
+	//hci_filter_all_events(&flt);
 
 	/* Saving the old filter.
 	   This can be helpful in a case where we want to use a same socket for different purposes
@@ -485,7 +522,8 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 	char canceled = 0;
 	int k = 0;
-	file = fopen("./res_rssi.txt", "w");
+	file = fopen("./stats/res_rssi.txt", "w");
+	//if (file == NULL) {
 
 	fprintf(stderr, "6. Checking response events...\n");
 	while(!canceled && (!(max_rsp > 0) || (k < max_rsp))) {

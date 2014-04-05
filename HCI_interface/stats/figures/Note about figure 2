@@ -1,0 +1,5 @@
+
+ NOTE : for that one particular measure, we took 50 values under 1m and the other 50 under 2m to see the differences. As expected, it only grows the bandwith of the density. It also shows us that, due to the
+ lack of confidence we can have in the RSSI measure, we have to wait for at least 5 values to be sure that
+ the position of the sensor has changed. That is to say in our configuration that we might have to wait 5s to know whether or not the position has changed.
+  

@@ -79,8 +79,8 @@ struct hci_filter get_hci_socket_filter(hci_socket_t hci_socket) {
 	if (getsockopt(hci_socket.sock, SOL_HCI, HCI_FILTER, (void *)&res, &old_flt_len) < 0) {
 		perror("get_hci_socket_filter : cannot save the old filter");
 		memset((void *)&res, 0, sizeof(struct hci_filter));
-		return res;
 	}
+	return res;
 }	
 
 //------------------------------------------------------------------------------------

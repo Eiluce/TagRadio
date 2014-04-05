@@ -6,11 +6,23 @@
 #include <stdint.h>
 #include "list.h"
 
+/* --------------
+   - STRUCTURES -
+   --------------
+*/
+
+/* HCI socket strucutre : */
 typedef struct hci_socket_t {
-	int8_t sock;
-	int8_t dev_id;
+	int8_t sock; // Socket id (-1 indicates that an error occured).
+	int8_t dev_id; // Bluetooth controler id.
 } hci_socket_t;
 
+//------------------------------------------------------------------------------------
+
+/* --------------
+   - PROTOTYPES -
+   --------------
+*/
 
 // TODO : FAIRE UNE LISTE DE SOCKETS PAR DEV_ID !!
 

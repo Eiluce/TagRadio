@@ -5,6 +5,8 @@
 
 int main(int argc, char **argv)
 {
+	//fprintf(stderr, "**************%i %i %i************\n", atoi(argv[1]),atoi(argv[2]), atoi(argv[3]));
+
 	fprintf(stderr, "-------------------------\n");
 	fprintf(stderr, "- OPENING SOCKETS TESTS -\n");
 	fprintf(stderr, "-------------------------\n");
@@ -32,8 +34,7 @@ int main(int argc, char **argv)
 	str2ba("1C:BA:8C:20:E9:1E", &test);
 	hci_LE_clear_white_list(NULL);
 	hci_LE_add_white_list(&hci_socket1, &test, 0x00); // 0x00 : PDA 
-	hci_LE_get_RSSI(&hci_socket1, NULL, 10, 0x00, 0x10, 0x10, 0x00, 0x01); // LE DERNIER 0x01 indique qu'on ne prend que les reponses matchant la liste blanche.
-	
+	hci_LE_get_RSSI(&hci_socket1, NULL, atoi(argv[1]), 0x00, atoi(argv[2]), atoi(argv[3]), 0x00, 0x00);	
 
 	fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- CLOSING SOCKETS TESTS -\n");

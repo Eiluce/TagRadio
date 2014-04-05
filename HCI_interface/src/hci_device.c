@@ -1,8 +1,6 @@
 #include "hci_device.h"
 #include <stdio.h>
 
-#include <bluetooth/hci_lib.h>
-
 void hci_device_display(hci_device_t device) {
 	
 	char tmp[18]; 
