@@ -1,0 +1,15 @@
+Simulation parameters :
+ * Range :  2 m
+ * Scan interval :  2000 ms
+ * Scan window :  200 ms
+
+Statistics results :
+ * Mean : -63.98148 
+ * Variance : 33.35151 
+ * Standard Deviation : 5.775077 
+ * Variance (R) : 33.98078 
+ * Standard Deviation (R) : 5.829304 
+
+
+Obtained with the following sample : 
+ -72 -66 -81 -81 -69 -69 -64 -68 -68 -61 -59 -69 -59 -59 -69 -59 -59 -69 -59 -59 -59 -70 -59 -59 -69 -59 -60 -69 -69 -59 -59 -59 -69 -59 -59 -70 -59 -59 -69 -59 -59 -59 -69 -69 -59 -58 -70 -59 -68 -62 -60 -69 -61 -61

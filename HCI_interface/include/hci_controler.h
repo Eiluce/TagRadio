@@ -7,7 +7,9 @@
 #include <stdarg.h>
 #include "hci_socket.h"
 
-
+/* Function "hci_compute_filter" :
+   
+*/
 extern void hci_compute_filter(struct hci_filter *flt, ...);
 
 extern hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
@@ -17,8 +19,8 @@ extern void hci_get_RSSI(hci_socket_t *hci_socket,
 			 bdaddr_t *mac, uint8_t duration, uint16_t max_rsp);	
 
 extern void hci_LE_get_RSSI(hci_socket_t *hci_socket,
-			    bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint8_t scan_interval,
-			    uint8_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy);
+			    bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint16_t scan_interval,
+			    uint16_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy);
 
 extern int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket);
 

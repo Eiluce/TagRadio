@@ -1,19 +1,20 @@
 #! /bin/bash
 
-# $1 = nombre points.
-# $2 = scan interval : intervalle de temps entre deux scans (ms).
-# $3 = scan window : durée d'un scan (ms).
-# $4 = mesure de l'espace entre le récepteur et l'émetteur (m).
-
-NB_IMG=0;
+NUM_IMG=0;
 
 if [ $# != 4 ]; then
     printf "Not enough parameters !\n";
+    printf "Here are the list of the 4 needed parameters :\n";
+    printf " -> The number of measures you want to have.\n" #$1
+    printf " -> The scan interval : i.e the interval between two different scans (in ms). \n" #$2
+    printf " -> The scan window : the duration of each scan (in ms).\n" #3
+    printf " -> The spacing between the receiver and the emitter (in M).\n" #4
     exit -1;
 fi
 
 if [ ! -e "./bin/hci_test" ]; then
     printf "Error : unexisting main program !\n";
+    printf "You need to compile the program first by simply typing \"make\".\n"
     exit -1
 fi
 
@@ -21,9 +22,9 @@ fi
 wait 
 
 for i in $(find ./stats/figures/ -type f -name "*.png"); do
-    NB_IMG=$((${NB_IMG} + 1));
+    NUM_IMG=$((${NUM_IMG} + 1));
 done;
 
-Rscript --no-save "./stats/RSSIStats.R" "./stats/res_rssi.txt" ${NB_IMG} $2 $3 $4 > /dev/null 
+Rscript --no-save "./stats/RSSIStats.R" "./stats/res_rssi.txt" ${NUM_IMG} $2 $3 $4 > /dev/null 
 
 exit 0

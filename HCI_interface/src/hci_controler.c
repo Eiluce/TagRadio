@@ -427,8 +427,8 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 
 // TESTER SI ON RECOIT AUSSI DES PAQUEST NON LE (MODIFIER FILTRE)
 void hci_LE_get_RSSI(hci_socket_t *hci_socket,
-		     bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint8_t scan_interval,
-		     uint8_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy) {
+		     bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint16_t scan_interval,
+		     uint16_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy) {
   
 
 	FILE *file = NULL;
