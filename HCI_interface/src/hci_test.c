@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 	display_hci_socket_list();
 
 
-	/*	fprintf(stderr, "\n-------------------------\n");
+		fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- SCANNING DEVICES TEST -\n");
 	fprintf(stderr, "-------------------------\n");
 	hci_device_table_t device_table = hci_scan_devices(&hci_socket, 5, 10, IREQ_CACHE_FLUSH);
@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 	fprintf(stderr, "\n-----------------------------\n");
 	fprintf(stderr, "- GETING RSSI MEASURES TEST -\n");
 	fprintf(stderr, "-----------------------------\n");
-	hci_get_RSSI(NULL, NULL, 15, 20);*/
+	hci_get_RSSI(NULL, NULL, 15, 20);
 
 	fprintf(stderr, "\n---------------------------------\n");
 	fprintf(stderr, "- GETING RSSI MEASURES TEST (LE)-\n");
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 	hci_LE_clear_white_list(NULL);
 	hci_LE_add_white_list(&hci_socket, &test, 0x00); // 0x00 : PDA 
 	hci_LE_get_RSSI(&hci_socket1, NULL, num_points, 0x00, scan_interval, scan_window, 0x00, 0x00);	
-
+	
 	fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- CLOSING SOCKETS TESTS -\n");
 	fprintf(stderr, "-------------------------\n");
@@ -64,9 +64,9 @@ int main(int argc, char **argv)
 	close_all_sockets();
 	display_hci_socket_list();
 
-		/*	uint64_t states = 0;
+	uint64_t states = 0;
 	hci_LE_read_supported_states(NULL, &states);
-	hci_display_LE_supported_states(states);*/
+	hci_display_LE_supported_states(states);
 
 	return EXIT_SUCCESS;
 }

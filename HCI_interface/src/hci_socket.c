@@ -25,6 +25,7 @@ hci_socket_t open_hci_socket(bdaddr_t *controler) {
 
 	return result;		
 }
+
 //------------------------------------------------------------------------------------
 
 void close_hci_socket(hci_socket_t *hci_socket) {

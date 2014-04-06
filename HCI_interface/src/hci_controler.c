@@ -7,6 +7,23 @@
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 
+static inline void check_hci_socket_ptr(hci_socket_t **hci_socket, char *new_socket, char *err) {
+	*err = 0;
+	if (*hci_socket == NULL) {
+		*new_socket = 1;
+		*hci_socket = malloc(sizeof(hci_socket_t));
+		*(*hci_socket) = open_hci_socket(NULL);
+	}
+	if ((*hci_socket)->sock < 0) {
+		if (*new_socket) {
+			free(*hci_socket);
+			*err = 1;
+		}
+	}
+}
+
+//------------------------------------------------------------------------------------
+
 void hci_compute_filter(struct hci_filter *flt, ...) {
 	va_list  pa;
 	uint32_t event;
@@ -17,7 +34,7 @@ void hci_compute_filter(struct hci_filter *flt, ...) {
 	}
 
 	hci_filter_clear(flt); 
-	hci_filter_set_ptype(HCI_EVENT_PKT, flt); // ATTENTION PEUT ËTRE A CHANGER : DONNER LE CHOIX CAR SUREMENT PAS ASSEZ GENERAL ? 	
+	hci_filter_set_ptype(HCI_EVENT_PKT, flt); 
 	// HCI_EVENT_PKT = HCI Event Packet.
 
 	va_start(pa, flt);
@@ -44,32 +61,26 @@ int8_t hci_LE_read_local_supported_features(hci_socket_t *hci_socket, uint8_t *f
 	rq.rparam = &rp;
 	rq.rlen = LE_READ_LOCAL_SUPPORTED_FEATURES_RP_SIZE;
 	
-
 	char new_socket = 0;
 	if (features == NULL) {
 		fprintf(stderr, "hci_LE_read_local_supported_features error : invalid reference.\n");
 		return -1;
 	}
 
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return -1;
 	}
 
 	if (hci_send_req(hci_socket->sock, &rq, 200) < 0) {
 		perror("hci_LE_read_local_supported_features");
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		} 
-		return -1;
+		goto fail;
+	}
+
+	if (rp.status) {
+		fprintf(stderr, "hci_LE_read_supported_states error : 0x%X\n", rp.status);
+		goto fail;
 	}
 
 	memcpy(features, rp.features, 8);
@@ -80,6 +91,14 @@ int8_t hci_LE_read_local_supported_features(hci_socket_t *hci_socket, uint8_t *f
 	} 
 
 	return 0;
+
+ fail:
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+	return -1;
+
 }
 
 //------------------------------------------------------------------------------------
@@ -102,34 +121,20 @@ int8_t hci_LE_read_supported_states(hci_socket_t *hci_socket, uint64_t *states) 
 		return -1;
 	}
 
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return -1;
 	}
 
 	if (hci_send_req(hci_socket->sock, &rq, 200) < 0) {
 		perror("hci_LE_read_supported_states");
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		} 
-		return -1;
+		goto fail;
 	}
 
 	if (rp.status) {
 		fprintf(stderr, "hci_LE_read_supported_states error : 0x%X\n", rp.status);
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		} 
-		return -1;
+		goto fail;
 	}
 
 	*states = rp.states;
@@ -140,21 +145,23 @@ int8_t hci_LE_read_supported_states(hci_socket_t *hci_socket, uint64_t *states) 
 	} 
 
 	return 0;
+
+ fail:
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+	return -1;
+
 }
 
 //------------------------------------------------------------------------------------
 
 int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket) {
 	char new_socket = 0;
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return -1;
 	}
 
@@ -179,24 +186,17 @@ int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket) {
 
 int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8_t add_type) {
 	char new_socket = 0;
-	
+
 	if (add == NULL) {
 		fprintf(stderr, "hci_LE_add_white_list error : NULL address.\n");
 		return -1;
 	}
 
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return -1;
 	}
-
 
 	if (hci_le_add_white_list(hci_socket->sock, add, add_type, 100) < 0) {
 		perror("hci_le_add_white_list");
@@ -225,15 +225,9 @@ int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8
 		return -1;
 	}
 
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return -1;
 	}
 
@@ -258,15 +252,9 @@ int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8
 
 int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size) {
 	char new_socket = 0;
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return -1;
 	}
 
@@ -297,15 +285,9 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	res.length = 0;
 	
 	char new_socket = 0;
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return res;
 	}
 
@@ -319,15 +301,10 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	if(num_rsp <= 0) {
 		fprintf(stderr, " No device found.\n");
 		free(ii);
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		}
-		return res;
+		goto fail;
 	}
 
-	fprintf(stderr, " [DONE]\n"); // PAS DONE ICI, IL FAUDRAIT LE METTRE QUAND ON A 
-	//RECU L'EVENT DE FIN DE COMMAND !!! (ICI, INQUIRY COMPLETE !).
+	fprintf(stderr, " [DONE]\n"); 
 
 	hci_device_t *device_table = calloc(num_rsp, sizeof(hci_device_t));
 
@@ -354,6 +331,13 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	res.length = num_rsp;
 
 	return res;
+
+ fail:
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	}
+	return res;
 }
 
 //------------------------------------------------------------------------------------
@@ -368,6 +352,7 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 
 	// Command parameter for an "OCF_WRITE_INQUIRY_MODE" :
 	write_inquiry_mode_cp write_cp;
+	memset(&write_cp, 0, sizeof(write_cp));
 
 	// Command parameter for a standard inquiry : "OCF_INQUIRY" :
 	inquiry_cp cp;
@@ -383,18 +368,12 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	hci_event_hdr event_header;
 
 	char new_socket = 0;
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return;
 	}
-	
+
 	// Creating our filter :
 	hci_compute_filter(&flt, EVT_CMD_COMPLETE,
 			   EVT_INQUIRY_RESULT_WITH_RSSI,
@@ -408,14 +387,10 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	if (!new_socket) {
 		old_flt = get_hci_socket_filter(*hci_socket);
 	}
-	
+
 	// Applying the new filter :
 	if (set_hci_socket_filter(*hci_socket, &flt) < 0) {
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		}
-		return;
+		goto fail;
 	}
 
 	// Configuring the inquiry mode on the open HCI socket :
@@ -425,11 +400,10 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 			 WRITE_INQUIRY_MODE_CP_SIZE, &write_cp) < 0) {
 		fprintf(stderr, " [ERROR]\n");
 		perror("Can't set inquiry mode");
-		return;
+		goto fail;
 	}
-	//	if (check_cmd_complete(hci_sock) == 0) { // ATTENTION : ON RECOIT PEUT ETRE CE PAQUET INSTANTANEMENT (A TESTER), IL FAUDRAIT DONC ENVOYER LA REQUETE LORSQU'ON A DEJA INITIALISE LE POLL, POUR QU'IL PUISSE CAPTER UN EVENTUEL EVENT AU MOMENT OU ON ENVOIE LA CMD !!!!!!!!!!!!!
+	// TODO TODO TODO TODO TODO TODO TODO TODO : check cmd_complete car là on a un hci_send_cmd et pas req !
 	fprintf(stderr, " [DONE]\n"); 
-	//	}
 
 	// Setting the command parameters for our rssi inquiry :
 	cp.lap[2] = 0x9e; 
@@ -438,14 +412,13 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	cp.num_rsp = max_rsp; 
 	cp.length = duration; 
 
-
 	fprintf(stderr, "Starting inquiry with RSSI...");
 
 	// Sending the inquiry's command to the HCI socket :
 	if (hci_send_cmd(hci_socket->sock, OGF_LINK_CTL, OCF_INQUIRY, INQUIRY_CP_SIZE, &cp) < 0) {
 		fprintf(stderr, " [ERROR]\n");
 		perror("Can't start inquiry");
-		return;
+		goto fail;
 	}
 
 	// Connection poll structure, not initialized yet :
@@ -483,7 +456,7 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 			// MAINTENIR CORRESPONDANCE DEVICES DEJA RENCONTRES MAIS AU NIVEAU LE PLUS GLOBAL POSSIBLE POUR QU'ELLE SOIT ACCESSIBLE A TRAVERS TOUTES NOS FONCTIONS (gagne en efficacité !!) !!!!!!!!!!!!!
 
 			switch (event_header.evt) {
-			case EVT_CMD_COMPLETE:
+			case EVT_CMD_COMPLETE: // Corresponding to the last "hci_send_cmd"
 				fprintf(stderr, " [DONE] \n");
 				break;
 			case EVT_INQUIRY_RESULT_WITH_RSSI: // Code 0x22 
@@ -534,11 +507,19 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 		// Restoring the old filter :
 		set_hci_socket_filter(*hci_socket, &old_flt);
 	}
+
+	return;
+
+ fail:
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	}
+	return;
 }
 
 //------------------------------------------------------------------------------------
 
-// DUPLICATE FILTERING ?
 // TESTER SI ON RECOIT AUSSI DES PAQUEST NON LE (MODIFIER FILTRE)
 void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		     bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint16_t scan_interval,
@@ -549,17 +530,12 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 	fprintf(stderr, "1. Opening socket...");
 	char new_socket = 0;
-	if (hci_socket == NULL) {
-		new_socket = 1;
-		hci_socket = malloc(sizeof(hci_socket_t));
-		*hci_socket = open_hci_socket(NULL);
-	}
-	if (hci_socket->sock < 0) {
-		if (new_socket) {
-			free(hci_socket);
-		}
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		return;
 	}
+
 	fprintf(stderr, " [DONE]\n");
 
 	struct pollfd p;
@@ -595,11 +571,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	// Applying the new filter :
 	fprintf(stderr, "3. Applying new filter...");
 	if (set_hci_socket_filter(*hci_socket, &flt) < 0) {
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		}
-		return;
+		goto fail;
 	}
 	fprintf(stderr, " [DONE]\n");
 
@@ -609,30 +581,17 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		// last parameter is timeout (for reaching the controler) 0 = infinity.
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_parameters");
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		}
-		return;
+		goto fail;
 	}
-	//	if (check_cmd_complete(hci_sock) == 0) {// ATTENTION : ON RECOIT PEUT ETRE CE PAQUET INSTANTANEMENT (A TESTER), IL FAUDRAIT DONC ENVOYER LA REQUETE LORSQU'ON A DEJA INITIALISE LE POLL, POUR QU'IL PUISSE CAPTER UN EVENTUEL EVENT AU MOMENT OU ON ENVOIE LA CMD !!!!!!!!!!!!!
 	fprintf(stderr, " [DONE]\n"); 
-		//	}
 
 	fprintf(stderr, "5. Enabling scan...");
 	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x00, 0) < 0) { // Duplicate filtering ? (cf p1069)
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_enable");
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		}
-
-		return;
+		goto fail;
 	}
-	//	if (check_cmd_complete(hci_sock) == 0) {
 	fprintf(stderr, " [DONE]\n"); 
-	//	}
 
 	char canceled = 0;
 	int k = 0;
@@ -730,17 +689,11 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	
 	fprintf(stderr, "7. Disabling scan...");
 	if (hci_le_set_scan_enable(hci_socket->sock, 0x00, 0x00, 0) < 0) {
+		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_disable");
-		if (new_socket) {
-			close_hci_socket(hci_socket);
-			free(hci_socket);
-		}	
-		fclose(file);
-		return;
+		goto fail;
 	}
-	//	if (check_cmd_complete(hci_sock) == 0) {
 	fprintf(stderr, " [DONE]\n"); 
-	//	}
 
 	if (new_socket) {
 		close_hci_socket(hci_socket);
@@ -752,5 +705,16 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	
 	fclose(file);
 
+	return;
+
+ fail :
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	}
+	if (file) {
+		fclose(file);
+	}
+	return;
 }
 
