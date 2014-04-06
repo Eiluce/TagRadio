@@ -620,7 +620,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		//	}
 
 	fprintf(stderr, "5. Enabling scan...");
-	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x00, 0) < 0) { // Duplicate filtering ? (cf p1069)
+	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x01, 0) < 0) { // Duplicate filtering ? (cf p1069)
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_enable");
 		if (new_socket) {
@@ -729,7 +729,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	fprintf(stderr, "Scan complete !\n");
 	
 	fprintf(stderr, "7. Disabling scan...");
-	if (hci_le_set_scan_enable(hci_socket->sock, 0x00, 0x00, 0) < 0) {
+	if (hci_le_set_scan_enable(hci_socket->sock, 0x00, 0x01, 0) < 0) {
 		perror("set_scan_disable");
 		if (new_socket) {
 			close_hci_socket(hci_socket);

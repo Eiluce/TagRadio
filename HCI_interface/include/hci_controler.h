@@ -30,4 +30,8 @@ extern int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add
 
 extern int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size);
 
+extern int8_t hci_LE_read_local_supported_features(hci_socket_t *hci_socket, uint8_t *features);
+
+extern int8_t hci_LE_read_supported_states(hci_socket_t *hci_socket, uint64_t *states);
+
 #endif 
