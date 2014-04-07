@@ -13,10 +13,13 @@
 #include <QLineEdit>
 #include <QString>
 #include <QMessageBox>
+#include <QTextStream>
+#include <QFileDialog>
 
 #include <iostream>
 
 #include <querybox.h>
+#include <reader.h>
 #include <../matrice_calibration/matriceCalibration.h>
 
 class MainWindow : public QMainWindow
@@ -25,22 +28,28 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
-
+    ~MainWindow();
 public slots:
     void startWithValues(int aX, int aY, int tX, int tY);
     void sendPointProbValues();
     void setPointProb(int posX, int posY, double prob);
     void resetPositions();
+    void readMatrixFromFile();
+
 
 signals:
     void pointProbValues(int posX, int posY, double prob);
 
 private:
+    QThread *thread;
+    Reader *reader;
+
     QGraphicsView *p_view;
     QGraphicsScene *p_scene;
 
     QPushButton *p_addPosition;
     QPushButton *p_deletePos;
+    QPushButton *p_openFile;
     QPushButton *p_quit;
 
     QLineEdit *p_addPosX;
