@@ -24,14 +24,22 @@ extern void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 extern int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket);
 
-extern int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8_t add_type);
+extern int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const hci_device_t hci_device);
 
-extern int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8_t add_type);
+extern int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const hci_device_t hci_device);
 
 extern int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size);
 
 extern int8_t hci_LE_read_local_supported_features(hci_socket_t *hci_socket, uint8_t *features);
 
 extern int8_t hci_LE_read_supported_states(hci_socket_t *hci_socket, uint64_t *states);
+
+extern char hci_already_registered_device(bdaddr_t add);
+
+extern hci_device_t *hci_register_device(hci_device_t hci_device);
+
+extern hci_device_t *hci_get_device(bdaddr_t add);
+
+extern void hci_destroy_device_table(void);
 
 #endif 

@@ -1,11 +1,49 @@
 #include "hci_controler.h"
 #include "hci_utils.h"
+#include "hci_device.h"
 #include <bluetooth/hci_lib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/poll.h>
+#include <sys/errno.h>
 #include <sys/ioctl.h>
+#include "cfuhash.h"
+
+static cfuhash_table_t *hci_devices_table = NULL;
+
+char hci_already_registered_device(bdaddr_t add) {
+	if (!hci_devices_table) {
+		hci_devices_table = cfuhash_new_with_initial_size(200);
+	}
+	return (char)(cfuhash_exists(hci_devices_table, batostr(&add)));
+}
+
+hci_device_t *hci_register_device(hci_device_t hci_device) {
+	if (!hci_devices_table) {
+		hci_devices_table = cfuhash_new_with_initial_size(200);
+	}
+	hci_device_t *tmp = malloc(sizeof(hci_device_t));
+	memcpy(tmp, &hci_device, sizeof(hci_device_t));
+	return (hci_device_t *)cfuhash_put(hci_devices_table, batostr(&(hci_device.mac)), (void *)tmp);
+} 
+
+hci_device_t *hci_get_device(bdaddr_t add) {
+	if (!hci_devices_table) {
+		hci_devices_table = cfuhash_new_with_initial_size(200);
+	}
+	return (hci_device_t *)cfuhash_get(hci_devices_table, batostr(&add));
+}
+
+void hci_destroy_device_table(void) {
+	if (hci_devices_table) {
+		cfuhash_clear(hci_devices_table);
+		free(hci_devices_table);
+	}
+	hci_devices_table = NULL;
+}
+
+//------------------------------------------------------------------------------------
 
 static inline void check_hci_socket_ptr(hci_socket_t **hci_socket, char *new_socket, char *err) {
 	*err = 0;
@@ -20,6 +58,54 @@ static inline void check_hci_socket_ptr(hci_socket_t **hci_socket, char *new_soc
 			*err = 1;
 		}
 	}
+}
+
+//------------------------------------------------------------------------------------
+
+static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardware.fr/hfr/Programmation/C/poll-sockets-sujet_86846_1.htm
+	//http://code.metager.de/source/xref/linux/bluetooth/bluez/lib/hci.c
+	struct pollfd p;
+	int n;
+	unsigned char buf[HCI_MAX_EVENT_SIZE];
+	hci_event_hdr *hdr;
+
+	uint8_t try = 10;
+	while (try--) {
+		p.fd = hci_socket->sock; p.events = POLLIN;
+		while ((n = poll(&p, 1, 500)) < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			goto fail;
+		}
+	
+		if (!n) {
+			fprintf(stderr, " ???????? \n");
+			errno = ETIMEDOUT;
+			goto fail;
+		}
+
+		int8_t len;
+		while ((len = read(hci_socket->sock, buf, sizeof(buf))) < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			goto fail;
+		}
+
+		hdr = (void *) (buf + 1);
+		switch (hdr->evt) {
+		case EVT_CMD_COMPLETE:
+			return 1;
+			break;
+		default:
+			fprintf(stderr, "check_cmd_complete warning : an unknown event occured.\n");
+			break;
+		}
+	}
+	errno = ETIMEDOUT;
+
+ fail:
+	return 0;
+
 }
 
 //------------------------------------------------------------------------------------
@@ -79,7 +165,7 @@ int8_t hci_LE_read_local_supported_features(hci_socket_t *hci_socket, uint8_t *f
 	}
 
 	if (rp.status) {
-		fprintf(stderr, "hci_LE_read_supported_states error : 0x%X\n", rp.status);
+		fprintf(stderr, "hci_LE_read_supported_features error : 0x%X\n", rp.status);
 		goto fail;
 	}
 
@@ -184,13 +270,9 @@ int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket) {
 
 //------------------------------------------------------------------------------------
 
-int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8_t add_type) {
+int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const hci_device_t hci_device) {
 	char new_socket = 0;
-
-	if (add == NULL) {
-		fprintf(stderr, "hci_LE_add_white_list error : NULL address.\n");
-		return -1;
-	}
+	uint8_t add_type = hci_device.add_type;
 
 	char socket_err = 0;
 	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
@@ -198,13 +280,20 @@ int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint
 		return -1;
 	}
 
-	if (hci_le_add_white_list(hci_socket->sock, add, add_type, 100) < 0) {
+	if (add_type == UNKNOWN_ADDRESS_TYPE) {
+		add_type = PUBLIC_DEVICE_ADDRESS;
+	}
+	if (hci_le_add_white_list(hci_socket->sock, &(hci_device.mac), add_type, 100) < 0) {
 		perror("hci_le_add_white_list");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
 			free(hci_socket);
 		}
 		return -1;
+	}
+
+	if (!hci_already_registered_device(hci_device.mac)) {
+		hci_register_device(hci_device);
 	}
 
 	if (new_socket) {
@@ -217,13 +306,9 @@ int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint
 
 //------------------------------------------------------------------------------------
 
-int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8_t add_type) {
+int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const hci_device_t hci_device) {
 	char new_socket = 0;
-
-	if (add == NULL) {
-		fprintf(stderr, "hci_LE_rm_white_list error : NULL address.\n");
-		return -1;
-	}
+	uint8_t add_type = hci_device.add_type;
 
 	char socket_err = 0;
 	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
@@ -231,13 +316,20 @@ int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bdaddr_t *add, uint8
 		return -1;
 	}
 
-	if (hci_le_rm_white_list(hci_socket->sock, add, add_type, 100) < 0) {
+	if (add_type == UNKNOWN_ADDRESS_TYPE) {
+		add_type = PUBLIC_DEVICE_ADDRESS;
+	}
+	if (hci_le_rm_white_list(hci_socket->sock, &(hci_device.mac), add_type, 100) < 0) {
 		perror("hci_le_rm_white_list");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
 			free(hci_socket);
 		}
 		return -1;
+	}
+
+	if (!hci_already_registered_device(hci_device.mac)) {
+		hci_register_device(hci_device);
 	}
 
 	if (new_socket) {
@@ -277,6 +369,28 @@ int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size) {
 
 //------------------------------------------------------------------------------------
 
+void hci_compute_device_name(hci_device_t *hci_device) {
+	if (!hci_device) {
+		fprintf(stderr, "hci_compute_device_name error : invalid device's reference.\n");
+		return;
+	}
+	hci_socket_t hci_socket = open_hci_socket(NULL);
+	if (hci_socket.sock < 0) {
+		strcpy(hci_device->real_name, "[UNKNOWN]");
+		return;
+	}
+	
+	if (hci_read_remote_name(hci_socket.sock, &(hci_device->mac), NAME_LENGTH, 
+				 hci_device->real_name, 0) < 0) {
+		perror("hci_read_remote_name");
+		strcpy(hci_device->real_name, "[UNKNOWN]");
+	}
+
+	close_hci_socket(&hci_socket);
+}
+
+//------------------------------------------------------------------------------------
+
 hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 				    uint8_t duration, uint16_t max_rsp, long flags) {
 	
@@ -311,13 +425,12 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	for (uint16_t i = 0; i < num_rsp; i++) {
 		memset(&(device_table[i]), 0, sizeof(hci_device_t));
 		device_table[i].mac = ii[i].bdaddr;
-		if (hci_read_remote_name(hci_socket->sock, &(device_table[i].mac), NAME_LENGTH, 
-					 device_table[i].real_name, 0) < 0) {
-			perror("hci_read_remote_name");
-			strcpy(device_table[i].real_name, "[UNKNOWN]");
+		hci_compute_device_name(&(device_table[i]));
+		device_table[i].add_type = UNKNOWN_ADDRESS_TYPE; // Personal code to indicate that this data wasn't available.
+		strcpy(device_table[i].custom_name, "UNKNOWN");
+		if (!hci_already_registered_device(device_table[i].mac)) {
+			hci_register_device(device_table[i]);
 		}
-		device_table[i].add_type = 0x12; // Personal code to indicate that this data wasn't available.
-		strcpy(device_table[i].custom_name, device_table[i].real_name);
 	}
 
 	free(ii);
@@ -342,6 +455,7 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 
 //------------------------------------------------------------------------------------
 
+// TODO : MODIFIER POUR FORCER L'ACCEPTATION DE PAQUETS DUPLIQUES SINON ON AURA TOUT LE TEMPS QU'UNE MESURE AVEC UN DONGLE STYLE BELKIN....
 void hci_get_RSSI(hci_socket_t *hci_socket,
 		  bdaddr_t *mac, uint8_t duration, uint16_t max_rsp) {
 	
@@ -402,8 +516,11 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 		perror("Can't set inquiry mode");
 		goto fail;
 	}
-	// TODO TODO TODO TODO TODO TODO TODO TODO : check cmd_complete car là on a un hci_send_cmd et pas req !
-	fprintf(stderr, " [DONE]\n"); 
+	if (check_cmd_complete(hci_socket)) {
+		fprintf(stderr, " [DONE]\n"); 
+	} else {
+		fprintf(stderr, " [ERROR ?]\n");
+	}
 
 	// Setting the command parameters for our rssi inquiry :
 	cp.lap[2] = 0x9e; 
@@ -414,12 +531,16 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 
 	fprintf(stderr, "Starting inquiry with RSSI...");
 
-	// Sending the inquiry's command to the HCI socket :
+	/* Sending the inquiry's command to the HCI socket :
+	   WARNING : According to the spec (p 706), no Command Complete event will be sent to the host by using
+	   this command. This will only generate an Inquiry Complete event.
+	*/
 	if (hci_send_cmd(hci_socket->sock, OGF_LINK_CTL, OCF_INQUIRY, INQUIRY_CP_SIZE, &cp) < 0) {
 		fprintf(stderr, " [ERROR]\n");
 		perror("Can't start inquiry");
 		goto fail;
 	}
+	fprintf(stderr, " [DONE]\n"); 
 
 	// Connection poll structure, not initialized yet :
 	struct pollfd p;
@@ -453,24 +574,28 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 			int num_results = event_parameter[0];
 			event_parameter = (void *)(event_parameter + 1); // We switch to the next byte.
 
-			// MAINTENIR CORRESPONDANCE DEVICES DEJA RENCONTRES MAIS AU NIVEAU LE PLUS GLOBAL POSSIBLE POUR QU'ELLE SOIT ACCESSIBLE A TRAVERS TOUTES NOS FONCTIONS (gagne en efficacité !!) !!!!!!!!!!!!!
-
 			switch (event_header.evt) {
 			case EVT_CMD_COMPLETE: // Corresponding to the last "hci_send_cmd"
-				fprintf(stderr, " [DONE] \n");
+				fprintf(stderr, "hci_get_RSSI warning : untreated Command Complete event.\n");
 				break;
 			case EVT_INQUIRY_RESULT_WITH_RSSI: // Code 0x22 
 				for (uint16_t i = 0; i < num_results; i++) {
 					hci_device_t hci_device;
-				
 					bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter + 6*i); // @ on 6 bytes.
-					hci_device.mac = *rsp_mac;
+					if (!hci_already_registered_device(*rsp_mac)) {
+						hci_device.mac = *rsp_mac;	
+						hci_compute_device_name(&hci_device);
+						strcpy(hci_device.custom_name, "UNKNOWN");
+						hci_device.add_type  = UNKNOWN_ADDRESS_TYPE;
+						hci_register_device(hci_device);
+					} else {
+						hci_device = *hci_get_device(*rsp_mac);
+					}
+
 					if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
 							continue;
 					}
-					strcpy(hci_device.real_name, "UNKNOWN");
-					strcpy(hci_device.custom_name, "UNKNOWN");
-					hci_device.add_type  = 0x12;
+
 					/* To understand the meaning of the following offsets, please refer to
 					   the spec' p.1002. The structure of the HCI Packet "inquiry result with
 					   RSSI" is shown and explained. To sum up, during the inquiry period,
@@ -630,17 +755,25 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 				case EVT_LE_ADVERTISING_REPORT:
 					for (uint16_t i = 0; i < num_reports; i++) {
 						hci_device_t hci_device;
-						uint8_t *address_type;
-
-						// Address type field :
-						address_type = (uint8_t *)(event_parameter + 1*num_reports + i);
+					
 
 						// Address field :
 						bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter +
 										 num_reports*(1+1) +
 										 6*i); // @ on 6 bytes.
-						
-					
+						if (!hci_already_registered_device(*rsp_mac)) {
+							uint8_t *address_type;
+							// Address type field :
+							address_type = (uint8_t *)(event_parameter + 1*num_reports + i);
+							hci_device.mac = *rsp_mac;
+							hci_device.add_type = *address_type;
+							hci_compute_device_name(&hci_device);
+							strcpy(hci_device.custom_name, "UNKNOWN");
+							hci_register_device(hci_device);
+						} else {
+							hci_device = *hci_get_device(*rsp_mac);
+						}
+
 						if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
 							continue;
 						}
@@ -659,10 +792,6 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 						}
 
 						// Display info :
-						hci_device.mac = *rsp_mac;
-						hci_device.add_type = *address_type;
-						strcpy(hci_device.real_name,"UNKNOWN");
-						strcpy(hci_device.custom_name, "UNKNOWN");
 						hci_device_display(hci_device);
 						fprintf(stdout, "%idb\n", *rssi);
 						fprintf(file, "%i\n", *rssi);

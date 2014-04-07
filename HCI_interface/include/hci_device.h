@@ -6,6 +6,11 @@
 
 #define NAME_LENGTH 50 // Max length of a stored name.
 
+// Addresses types :
+#define PUBLIC_DEVICE_ADDRESS 0x00
+#define RANDOM_DEVICE_ADDRESS 0x01
+#define UNKNOWN_ADDRESS_TYPE 0x12
+
 /* --------------
    - STRUCTURES -
    --------------
