@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include <querybox.h>
+#include <tablesizebox.h>
 #include <reader.h>
 #include <../matrice_calibration/matriceCalibration.h>
 
@@ -35,7 +36,8 @@ public slots:
     void setPointProb(int posX, int posY, double prob);
     void resetPositions();
     void readMatrixFromFile();
-
+    void changeTableSize();
+    void modifyTableSize(int p1X, int p1Y, int p2X, int p2Y);
 
 signals:
     void pointProbValues(int posX, int posY, double prob);
@@ -50,6 +52,7 @@ private:
     QPushButton *p_addPosition;
     QPushButton *p_deletePos;
     QPushButton *p_openFile;
+    QPushButton *p_changeTableSize;
     QPushButton *p_quit;
 
     QLineEdit *p_addPosX;
@@ -57,6 +60,7 @@ private:
     QLineEdit *p_addPosP;
 
     QGraphicsItem *table;
+
 
     int numberOfRows;
     int numberOfColumns;
