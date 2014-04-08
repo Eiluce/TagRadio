@@ -38,7 +38,7 @@ extern char hci_already_registered_device(bdaddr_t add);
 
 extern hci_device_t *hci_register_device(hci_device_t hci_device);
 
-extern hci_device_t *hci_get_device(bdaddr_t add);
+extern hci_device_t hci_get_device(bdaddr_t add);
 
 extern void hci_destroy_device_table(void);
 

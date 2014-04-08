@@ -16,29 +16,46 @@ char hci_already_registered_device(bdaddr_t add) {
 	if (!hci_devices_table) {
 		hci_devices_table = cfuhash_new_with_initial_size(200);
 	}
-	return (char)(cfuhash_exists(hci_devices_table, batostr(&add)));
+	char string_add[18]; 
+	memset(string_add, 0, 18);
+	ba2str((const bdaddr_t *)&(add), string_add);
+
+	return (char)(cfuhash_exists(hci_devices_table, string_add));
 }
 
 hci_device_t *hci_register_device(hci_device_t hci_device) {
 	if (!hci_devices_table) {
 		hci_devices_table = cfuhash_new_with_initial_size(200);
 	}
+	char string_add[18]; 
+	memset(string_add, 0, 18);
+	ba2str((const bdaddr_t *)&(hci_device.mac), string_add);
+
 	hci_device_t *tmp = malloc(sizeof(hci_device_t));
 	memcpy(tmp, &hci_device, sizeof(hci_device_t));
-	return (hci_device_t *)cfuhash_put(hci_devices_table, batostr(&(hci_device.mac)), (void *)tmp);
+
+	return (hci_device_t *)cfuhash_put(hci_devices_table, string_add, (void *)tmp);
 } 
 
-hci_device_t *hci_get_device(bdaddr_t add) {
+hci_device_t hci_get_device(bdaddr_t add) {
+	hci_device_t *tmp;
+
 	if (!hci_devices_table) {
 		hci_devices_table = cfuhash_new_with_initial_size(200);
 	}
-	return (hci_device_t *)cfuhash_get(hci_devices_table, batostr(&add));
+
+	char string_add[18]; 
+	memset(string_add, 0, 18);
+	ba2str((const bdaddr_t *)&(add), string_add);
+
+	tmp = (hci_device_t *)cfuhash_get(hci_devices_table, string_add);
+
+	return *tmp;
 }
 
 void hci_destroy_device_table(void) {
 	if (hci_devices_table) {
-		cfuhash_clear(hci_devices_table);
-		free(hci_devices_table);
+		cfuhash_destroy_with_free_fn(hci_devices_table, free);
 	}
 	hci_devices_table = NULL;
 }
@@ -56,6 +73,7 @@ static inline void check_hci_socket_ptr(hci_socket_t **hci_socket, char *new_soc
 		if (*new_socket) {
 			free(*hci_socket);
 			*err = 1;
+			*new_socket = 0;
 		}
 	}
 }
@@ -75,12 +93,13 @@ static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardwar
 		while ((n = poll(&p, 1, 500)) < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
+			perror("check_cmd_complete : error while polling socket.\n");
 			goto fail;
 		}
 	
 		if (!n) {
-			fprintf(stderr, " ???????? \n");
 			errno = ETIMEDOUT;
+			perror("check_cmd_complete : error while polling socket.\n");
 			goto fail;
 		}
 
@@ -88,6 +107,7 @@ static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardwar
 		while ((len = read(hci_socket->sock, buf, sizeof(buf))) < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
+			perror("check_cmd_complete : error while reading socket.\n");
 			goto fail;
 		}
 
@@ -150,13 +170,13 @@ int8_t hci_LE_read_local_supported_features(hci_socket_t *hci_socket, uint8_t *f
 	char new_socket = 0;
 	if (features == NULL) {
 		fprintf(stderr, "hci_LE_read_local_supported_features error : invalid reference.\n");
-		return -1;
+		goto fail;
 	}
 
 	char socket_err = 0;
 	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
 	if (socket_err) {
-		return -1;
+		goto fail;
 	}
 
 	if (hci_send_req(hci_socket->sock, &rq, 200) < 0) {
@@ -204,13 +224,13 @@ int8_t hci_LE_read_supported_states(hci_socket_t *hci_socket, uint64_t *states) 
 	char new_socket = 0;
 	if (states == NULL) {
 		fprintf(stderr, "hci_LE_read_local_supported_features error : invalid reference.\n");
-		return -1;
+		goto fail;
 	}
 
 	char socket_err = 0;
 	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
 	if (socket_err) {
-		return -1;
+		goto fail;
 	}
 
 	if (hci_send_req(hci_socket->sock, &rq, 200) < 0) {
@@ -414,8 +434,7 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	int16_t num_rsp = hci_inquiry(hci_socket->dev_id, duration, max_rsp, NULL, &ii, flags);
 	if(num_rsp <= 0) {
 		fprintf(stderr, " No device found.\n");
-		free(ii);
-		goto fail;
+		goto end;
 	}
 
 	fprintf(stderr, " [DONE]\n"); 
@@ -433,6 +452,11 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 		}
 	}
 
+
+	res.device = device_table;
+	res.length = num_rsp;
+
+ end :
 	free(ii);
 
 	if (new_socket) {
@@ -440,16 +464,6 @@ hci_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 		free(hci_socket);
 	}
 
-	res.device = device_table;
-	res.length = num_rsp;
-
-	return res;
-
- fail:
-	if (new_socket) {
-		close_hci_socket(hci_socket);
-		free(hci_socket);
-	}
 	return res;
 }
 
@@ -498,13 +512,16 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	   This can be helpful in a case where we want to use a same socket for different purposes
 	   (even with multiple threads), we can replace the old filter and re-use it later.
 	*/
+	char saved_flt = 1;
 	if (!new_socket) {
-		old_flt = get_hci_socket_filter(*hci_socket);
+		if (get_hci_socket_filter(*hci_socket, &old_flt) < 0) {
+			saved_flt = 0;
+		}
 	}
 
 	// Applying the new filter :
 	if (set_hci_socket_filter(*hci_socket, &flt) < 0) {
-		goto fail;
+		goto end;
 	}
 
 	// Configuring the inquiry mode on the open HCI socket :
@@ -514,12 +531,12 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 			 WRITE_INQUIRY_MODE_CP_SIZE, &write_cp) < 0) {
 		fprintf(stderr, " [ERROR]\n");
 		perror("Can't set inquiry mode");
-		goto fail;
+		goto end;
 	}
 	if (check_cmd_complete(hci_socket)) {
 		fprintf(stderr, " [DONE]\n"); 
 	} else {
-		fprintf(stderr, " [ERROR ?]\n");
+		fprintf(stderr, " [ERROR]\n");
 	}
 
 	// Setting the command parameters for our rssi inquiry :
@@ -538,7 +555,7 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	if (hci_send_cmd(hci_socket->sock, OGF_LINK_CTL, OCF_INQUIRY, INQUIRY_CP_SIZE, &cp) < 0) {
 		fprintf(stderr, " [ERROR]\n");
 		perror("Can't start inquiry");
-		goto fail;
+		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
 
@@ -546,100 +563,123 @@ void hci_get_RSSI(hci_socket_t *hci_socket,
 	struct pollfd p;
 	// Initializing the connection poll on our HCI socket :
 	p.fd = hci_socket->sock;
-	p.events = POLLIN | POLLERR | POLLHUP;
+	p.events = POLLIN;
 
 	char canceled = 0;
+	int8_t n = 0;
+	int16_t len = 0;
 
 	while(!canceled) {
 		p.revents = 0;
+		n = 0;
+		len = 0;
 
 		// Polling the BT device for an event :
-		if (poll(&p, 1, -1) > 0) {
-
-			// If an event occured, we store the HCI Event packet into our buffer :
-			int len = read(hci_socket->sock, buf, sizeof(buf));
-
-			if (len < 0) {
+		if ((n = poll(&p, 1, -1)) < 0) {
+			if (errno == EAGAIN || EINTR) {
 				continue;
-			} else if (len == 0) {
-				break;
 			}
-
-			// WHAT IS buf[0] ? Maybe a parameter added by "read()" ???
-			event_header.evt = buf[1];
-			event_header.plen = buf[2];
-	
-			event_parameter = buf + HCI_EVENT_HDR_SIZE + 1;
-			
-			int num_results = event_parameter[0];
-			event_parameter = (void *)(event_parameter + 1); // We switch to the next byte.
-
-			switch (event_header.evt) {
-			case EVT_CMD_COMPLETE: // Corresponding to the last "hci_send_cmd"
-				fprintf(stderr, "hci_get_RSSI warning : untreated Command Complete event.\n");
-				break;
-			case EVT_INQUIRY_RESULT_WITH_RSSI: // Code 0x22 
-				for (uint16_t i = 0; i < num_results; i++) {
-					hci_device_t hci_device;
-					bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter + 6*i); // @ on 6 bytes.
-					if (!hci_already_registered_device(*rsp_mac)) {
-						hci_device.mac = *rsp_mac;	
-						hci_compute_device_name(&hci_device);
-						strcpy(hci_device.custom_name, "UNKNOWN");
-						hci_device.add_type  = UNKNOWN_ADDRESS_TYPE;
-						hci_register_device(hci_device);
-					} else {
-						hci_device = *hci_get_device(*rsp_mac);
-					}
-
-					if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
-							continue;
-					}
-
-					/* To understand the meaning of the following offsets, please refer to
-					   the spec' p.1002. The structure of the HCI Packet "inquiry result with
-					   RSSI" is shown and explained. To sum up, during the inquiry period,
-					   several devices may respond and one event packet may contain several
-					   informations. But these informations are not stored device per device
-					   but rather "feature by feature". That is to say that the event packet
-					   contains first all of the mac@, then all of the 
-					   "page_scan_repetition_mode" etc...
-					*/
-					int8_t *rssi = (int8_t *)(event_parameter + (6+1+1+3+2)*num_results + i); 
-			
-					hci_device_display(hci_device);
-					fprintf(stdout, "%idb \n", *rssi);
-				}
-				break;
-
-			case EVT_INQUIRY_COMPLETE:
-				fprintf(stderr, "Inquiry complete !\n");
-				canceled = 1;
-				break;
-				
-			default:
-				fprintf(stderr, "An unknown event occurred : 0x%X\n", event_header.evt);
-				break;
-			}
-			
+			perror("hci_get_RSSI : error while polling the socket");
+			canceled = 1;
 		}
+		if (canceled) {
+			break;
+		}
+
+		if (!n) {
+			errno = ETIMEDOUT;
+			perror("hci_get_RSSI : error while polling the socket");
+			break;
+		}
+
+		while ((len = read(hci_socket->sock, buf, sizeof(buf))) < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			perror("hci_get_RSSI : error while reading the socket");
+			canceled = 1;
+		}
+		if (canceled) {
+			break;
+		}
+
+		if (len == 0) {
+			fprintf(stderr, "hci_get_RSSI warning : nothing to read on the socket.\n");
+			break;
+		}
+
+
+		// WHAT IS buf[0] ? Maybe a parameter added by "read()" ???
+		event_header.evt = buf[1];
+		event_header.plen = buf[2];
+	
+		event_parameter = buf + HCI_EVENT_HDR_SIZE + 1;
+			
+		int num_results = event_parameter[0];
+		event_parameter = (void *)(event_parameter + 1); // We switch to the next byte.
+
+		switch (event_header.evt) {
+		case EVT_CMD_COMPLETE: // Corresponding to the last "hci_send_cmd"
+			fprintf(stderr, "hci_get_RSSI warning : untreated \"Command Complete\" event.\n");
+			break;
+
+		case EVT_INQUIRY_RESULT_WITH_RSSI: // Code 0x22 
+			for (uint16_t i = 0; i < num_results; i++) {
+				hci_device_t hci_device;
+				bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter + 6*i); // @ on 6 bytes.
+				if (!hci_already_registered_device(*rsp_mac)) {
+					hci_device.mac = *rsp_mac;	
+					hci_compute_device_name(&hci_device);
+					strcpy(hci_device.custom_name, "UNKNOWN");
+					hci_device.add_type  = UNKNOWN_ADDRESS_TYPE;
+					hci_register_device(hci_device);
+				} else {
+					hci_device = hci_get_device(*rsp_mac);
+				}
+
+				if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
+					continue;
+				}
+
+				/* To understand the meaning of the following offsets, please refer to
+				   the spec' p.1002. The structure of the HCI Packet "inquiry result with
+				   RSSI" is shown and explained. To sum up, during the inquiry period,
+				   several devices may respond and one event packet may contain several
+				   informations. But these informations are not stored device per device
+				   but rather "feature by feature". That is to say that the event packet
+				   contains first all of the mac@, then all of the 
+				   "page_scan_repetition_mode" etc...
+				*/
+				int8_t *rssi = (int8_t *)(event_parameter + (6+1+1+3+2)*num_results + i); 
+			
+				hci_device_display(hci_device);
+				fprintf(stdout, "%idb \n", *rssi);
+			}
+			break;
+
+		case EVT_INQUIRY_COMPLETE:
+			fprintf(stderr, "Inquiry complete !\n");
+			canceled = 1;
+			break;
+				
+		default:
+			fprintf(stderr, "hci_get_RSSI warning : an unknown event occurred : 0x%X\n", event_header.evt);
+			break;
+		}
+			
 	}
 
+
+ end :
 	if (new_socket) {
 		close_hci_socket(hci_socket);
 		free(hci_socket);
 	} else {
 		// Restoring the old filter :
-		set_hci_socket_filter(*hci_socket, &old_flt);
+		if (saved_flt) {
+			set_hci_socket_filter(*hci_socket, &old_flt);
+		}
 	}
 
-	return;
-
- fail:
-	if (new_socket) {
-		close_hci_socket(hci_socket);
-		free(hci_socket);
-	}
 	return;
 }
 
@@ -666,7 +706,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	struct pollfd p;
 	// Initializing the connection poll on our HCI socket :
 	p.fd = hci_socket->sock;
-	p.events = POLLIN | POLLERR | POLLHUP;
+	p.events = POLLIN;
 	unsigned char buf[HCI_MAX_EVENT_SIZE]; 
 
 	hci_event_hdr event_header;
@@ -688,15 +728,18 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	   (even with multiple threads), we can replace the old filter and re-use it later.
 	*/
 	fprintf(stderr, "2. Saving old filter...");
+	char saved_flt = 1;
 	if (!new_socket) {
-		old_flt = get_hci_socket_filter(*hci_socket);
+		if (get_hci_socket_filter(*hci_socket, &old_flt) < 0) {
+			saved_flt = 0;
+		}
 	}
 	fprintf(stderr, " [DONE]\n");
 
 	// Applying the new filter :
 	fprintf(stderr, "3. Applying new filter...");
 	if (set_hci_socket_filter(*hci_socket, &flt) < 0) {
-		goto fail;
+		goto end;
 	}
 	fprintf(stderr, " [DONE]\n");
 
@@ -706,7 +749,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		// last parameter is timeout (for reaching the controler) 0 = infinity.
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_parameters");
-		goto fail;
+		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
 
@@ -714,7 +757,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x00, 0) < 0) { // Duplicate filtering ? (cf p1069)
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_enable");
-		goto fail;
+		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
 
@@ -724,126 +767,144 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	//if (file == NULL) {
 
 	fprintf(stderr, "6. Checking response events...\n");
+
+	int8_t n = 0;
+	int16_t len = 0;
+
 	while(!canceled && (!(max_rsp > 0) || (k < max_rsp))) {
 		p.revents = 0;
+		n = 0;
+		len = 0;
 
 		// Polling the BT device for an event :
-		if (poll(&p, 1, 5000) > 0) {
-
-			// If an event occured, we store the HCI Event packet into our buffer :
-			int len = read(hci_socket->sock, buf, sizeof(buf));
-
-			if (len < 0) {
+		while ((n = poll(&p, 1, 10000)) < 0) {
+			if (errno == EAGAIN || EINTR) {
 				continue;
-			} else if (len == 0) {
-				break;
 			}
+			perror("hci_LE_get_RSSI : error while polling the socket");
+			canceled = 1;
+		}
+		if (canceled) {
+			break;
+		}
 
-			// WHAT IS buf[0] ? Maybe a parameter added by "read()" ???
-			event_header.evt = buf[1];
-			event_header.plen = buf[2];
+		if (!n) {
+			errno = ETIMEDOUT;
+			perror("hci_LE_get_RSSI : error while polling the socket");
+			break;
+		}
+
+		while ((len = read(hci_socket->sock, buf, sizeof(buf))) < 0) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			perror("hci_LE_get_RSSI : error while reading the socket");
+			canceled = 1;
+		}
+		if (canceled) {
+			break;
+		}
+
+		if (len == 0) {
+			fprintf(stderr, "hci_LE_get_RSSI warning : nothing to read on the socket.\n");
+			break;
+		}
+
+		// WHAT IS buf[0] ? Maybe a parameter added by "read()" ???
+		event_header.evt = buf[1];
+		event_header.plen = buf[2];
 			
-			event_parameter = (void *)(buf + HCI_EVENT_HDR_SIZE + 1);
-			uint8_t subevent_code = *(event_parameter);
-			event_parameter = (void *)(event_parameter + 1);
-			int num_reports = *event_parameter;
-			event_parameter = (void *)(event_parameter + 1);
+		event_parameter = (void *)(buf + HCI_EVENT_HDR_SIZE + 1);
+		uint8_t subevent_code = *(event_parameter);
+		event_parameter = (void *)(event_parameter + 1);
+		int num_reports = *event_parameter;
+		event_parameter = (void *)(event_parameter + 1);
 		
-			switch (event_header.evt) {
-			case EVT_LE_META_EVENT: // Code 0x3E
-				switch (subevent_code) {
-				case EVT_LE_ADVERTISING_REPORT:
-					for (uint16_t i = 0; i < num_reports; i++) {
-						hci_device_t hci_device;
+		switch (event_header.evt) {
+		case EVT_LE_META_EVENT: // Code 0x3E
+			switch (subevent_code) {
+			case EVT_LE_ADVERTISING_REPORT:
+				for (uint16_t i = 0; i < num_reports; i++) {
+					hci_device_t hci_device;
 					
-
-						// Address field :
-						bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter +
-										 num_reports*(1+1) +
-										 6*i); // @ on 6 bytes.
-						if (!hci_already_registered_device(*rsp_mac)) {
-							uint8_t *address_type;
-							// Address type field :
-							address_type = (uint8_t *)(event_parameter + 1*num_reports + i);
-							hci_device.mac = *rsp_mac;
-							hci_device.add_type = *address_type;
-							hci_compute_device_name(&hci_device);
-							strcpy(hci_device.custom_name, "UNKNOWN");
-							hci_register_device(hci_device);
-						} else {
-							hci_device = *hci_get_device(*rsp_mac);
-						}
-
-						if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
-							continue;
-						}
-
-						// Length_data field :
-						uint8_t *length_data = (uint8_t *)(event_parameter +
-										   num_reports*(1+1+6) + i);
-
-						// RSSI field :
-						int8_t *rssi = (int8_t *)(event_parameter + 
-									  (1+1+6+1+(*length_data))*num_reports + i); // rssi on 1byte
-						if (*rssi == 127) {
-							fprintf(stderr, "hci_le_get_rssi warning : RSSI measure unavailable.\n");
-						} else if (*rssi >= 21) {
-							fprintf(stderr, "hci_le_get_rssi error : Error while reading RSSI measure.\n");
-						}
-
-						// Display info :
-						hci_device_display(hci_device);
-						fprintf(stdout, "%idb\n", *rssi);
-						fprintf(file, "%i\n", *rssi);
-						k++;
+					// Address field :
+					bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter +
+									 num_reports*(1+1) +
+									 6*i); // @ on 6 bytes.
+					if (!hci_already_registered_device(*rsp_mac)) {
+						uint8_t *address_type;
+						// Address type field :
+						address_type = (uint8_t *)(event_parameter + 1*num_reports + i);
+						hci_device.mac = *rsp_mac;
+						hci_device.add_type = *address_type;
+						hci_compute_device_name(&hci_device);
+						strcpy(hci_device.custom_name, "UNKNOWN");
+						hci_register_device(hci_device);
+					} else {
+						hci_device = hci_get_device(*rsp_mac);
 					}
-					break;
-					
-				default:
-					fprintf(stderr, "An unknown LE sub-event occured : 0x%X \n",
-						subevent_code);
-					break;
+
+					if (mac != NULL && !(hci_compare_addresses(mac, rsp_mac))) {
+						continue;
+					}
+
+					// Length_data field :
+					uint8_t *length_data = (uint8_t *)(event_parameter +
+									   num_reports*(1+1+6) + i);
+
+					// RSSI field :
+					int8_t *rssi = (int8_t *)(event_parameter + 
+								  (1+1+6+1+(*length_data))*num_reports + i); // rssi on 1byte
+					if (*rssi == 127) {
+						fprintf(stderr, "hci_LE_get_rssi warning : RSSI measure unavailable.\n");
+					} else if (*rssi >= 21) {
+						fprintf(stderr, "hci_LE_get_rssi error : error while reading RSSI measure.\n");
+					}
+
+					// Display info :
+					hci_device_display(hci_device);
+					fprintf(stdout, "%idb\n", *rssi);
+					fprintf(file, "%i\n", *rssi);
+					k++;
 				}
 				break;
+					
 			default:
-				fprintf(stderr, "An unknown event occured : 0x%X\n", event_header.evt);
+				fprintf(stderr, "hci_LE_get_rssi warning : an unknown LE sub-event occured : 0x%X \n",
+					subevent_code);
 				break;
 			}
-		} else {
-			fprintf(stderr, "hci_get_le_rssi warning : timeout expired.\n");
+			break;
+		default:
+			fprintf(stderr, "hci_LE_get_rssi warning : an unknown event occured : 0x%X\n", event_header.evt);
 			break;
 		}
 	}
+
 	fprintf(stderr, "Scan complete !\n");
 	
 	fprintf(stderr, "7. Disabling scan...");
 	if (hci_le_set_scan_enable(hci_socket->sock, 0x00, 0x00, 0) < 0) {
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_disable");
-		goto fail;
+		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
 
+ end :
 	if (new_socket) {
 		close_hci_socket(hci_socket);
 		free(hci_socket);
 	} else {			
 		// Restoring the old filter :
-		set_hci_socket_filter(*hci_socket, &old_flt);
+		if (saved_flt) {
+			set_hci_socket_filter(*hci_socket, &old_flt);
+		}
 	}
-	
-	fclose(file);
 
-	return;
-
- fail :
-	if (new_socket) {
-		close_hci_socket(hci_socket);
-		free(hci_socket);
-	}
 	if (file) {
 		fclose(file);
 	}
+
 	return;
 }
 

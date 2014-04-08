@@ -4,6 +4,8 @@
 #include "list.h"
 #include <stdlib.h>
 
+
+#include "cfuhash.h"
 int main(int argc, char **argv)
 {
 	//fprintf(stderr, "**************%i %i %i************\n", atoi(argv[1]),atoi(argv[2]), atoi(argv[3]));
@@ -27,7 +29,7 @@ int main(int argc, char **argv)
 	display_hci_socket_list();
 
 
-		fprintf(stderr, "\n-------------------------\n");
+	fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- SCANNING DEVICES TEST -\n");
 	fprintf(stderr, "-------------------------\n");
 	hci_device_table_t device_table = hci_scan_devices(&hci_socket, 5, 10, IREQ_CACHE_FLUSH);
@@ -37,7 +39,7 @@ int main(int argc, char **argv)
 	fprintf(stderr, "\n-----------------------------\n");
 	fprintf(stderr, "- GETING RSSI MEASURES TEST -\n");
 	fprintf(stderr, "-----------------------------\n");
-	hci_get_RSSI(NULL, NULL, 15, 20);
+	hci_get_RSSI(NULL, NULL, 5, 20);
 
 	fprintf(stderr, "\n---------------------------------\n");
 	fprintf(stderr, "- GETING RSSI MEASURES TEST (LE)-\n");
@@ -54,7 +56,7 @@ int main(int argc, char **argv)
 	hci_LE_clear_white_list(NULL);
 	hci_LE_add_white_list(&hci_socket, test); // 0x00 : PDA 
 
-	hci_LE_get_RSSI(&hci_socket1, NULL, num_points, 0x00, scan_interval, scan_window, 0x00, 0x01);	
+	hci_LE_get_RSSI(&hci_socket1, NULL, num_points, 0x00, scan_interval, scan_window, 0x00, 0x00);	
 	
 	fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- CLOSING SOCKETS TESTS -\n");
@@ -72,6 +74,8 @@ int main(int argc, char **argv)
 	hci_display_LE_supported_states(states);
 
 	hci_destroy_device_table();
+
+
 
 	return EXIT_SUCCESS;
 }
