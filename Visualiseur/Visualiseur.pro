@@ -14,9 +14,11 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    querybox.cpp
+    querybox.cpp \
+    reader.cpp
 
 HEADERS  += mainwindow.h \
-    querybox.h
+    querybox.h \
+    reader.h
 
 FORMS    +=

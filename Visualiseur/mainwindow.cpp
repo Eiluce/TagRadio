@@ -3,6 +3,18 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent)
 {
+    thread = new QThread();
+    reader = new Reader();
+
+    reader->moveToThread(thread);
+    connect(reader, SIGNAL(sendPoint(int,int,double)),
+            this, SLOT(setPointProb(int,int,double)));
+    connect(reader, SIGNAL(workRequested()), thread, SLOT(start()));
+    connect(thread, SIGNAL(started()), reader, SLOT(doWork()));
+    connect(reader, SIGNAL(finished()),
+            thread, SLOT(quit()) , Qt::DirectConnection);
+    connect(reader, SIGNAL(sendReset()), this, SLOT(resetPositions()));
+
     setFixedSize(800,600);
     p_scene = new QGraphicsScene(this);
     p_view = new QGraphicsView(p_scene, this);
@@ -17,6 +29,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     p_deletePos = new QPushButton("Réinitialiser positions", this);
     p_deletePos->setGeometry(590,130, 120, 30);
+
+    p_openFile = new QPushButton("Ouvrir fichier", this);
+    p_openFile->setGeometry(590, 170, 120, 30);
 
     p_quit = new QPushButton("Quitter", this);
     p_quit->setGeometry(600, 560, 100, 30);
@@ -42,7 +57,8 @@ MainWindow::MainWindow(QWidget *parent) :
                      this, SLOT(resetPositions()));
     QObject::connect(p_quit, SIGNAL(clicked()),
                      qApp, SLOT(quit()));
-
+    QObject::connect(p_openFile, SIGNAL(clicked()),
+                     this, SLOT(readMatrixFromFile()));
 
 
 }
@@ -155,7 +171,24 @@ void MainWindow::resetPositions() {
          iter != listPositions.end(); ++iter) {
          p_scene->removeItem(*iter);
     }
+    listPositions.clear();
 
+}
+
+void MainWindow::readMatrixFromFile() {
+    QString filename = QFileDialog::getOpenFileName(this, tr("Ouvrir"), "", tr("Files(*.txt)"));
+    reader->abort();
+    thread->wait();
+    reader->setFilename(filename);
+    reader->requestWork();
+
+}
+
+MainWindow::~MainWindow() {
+    reader->abort();
+    thread->wait();
+    delete thread;
+    delete reader;
 }
 
 
