@@ -24,6 +24,7 @@ public:
     double* getElement(int line, int column);
     int setElement(int line, int column, double* elem);
     pair<int, int> bestPosition(double* mesure);
+    void setDistances(double* mesure);
     
     /*Méthodes privées*/
 private:
