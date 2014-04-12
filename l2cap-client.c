@@ -10,7 +10,7 @@ int main(int argc, char **argv)
     struct sockaddr_l2 addr = { 0 };
     int s, status;
     char *message = "hello!";
-    char dest[18] = "01:23:45:67:89:AB";
+    char dest[18] = "00:02:72:CD:29:66";
 
     if(argc < 2)
     {
