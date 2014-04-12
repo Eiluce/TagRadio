@@ -25,6 +25,7 @@ hci_socket_t open_hci_socket(bdaddr_t *controler) {
 
 	return result;		
 }
+
 //------------------------------------------------------------------------------------
 
 void close_hci_socket(hci_socket_t *hci_socket) {
@@ -73,14 +74,15 @@ void close_all_sockets(void) {
 
 //------------------------------------------------------------------------------------
 
-struct hci_filter get_hci_socket_filter(hci_socket_t hci_socket) {
-	struct hci_filter res;
+int8_t get_hci_socket_filter(hci_socket_t hci_socket, struct hci_filter *old_flt) {
+	int8_t err_code;
 	socklen_t old_flt_len = sizeof(struct hci_filter);
-	if (getsockopt(hci_socket.sock, SOL_HCI, HCI_FILTER, (void *)&res, &old_flt_len) < 0) {
+	err_code = getsockopt(hci_socket.sock, SOL_HCI, HCI_FILTER, (void *)old_flt, &old_flt_len);
+	if (err_code < 0) {
 		perror("get_hci_socket_filter : cannot save the old filter");
-		memset((void *)&res, 0, sizeof(struct hci_filter));
+		memset((void *)old_flt, 0, sizeof(struct hci_filter));
 	}
-	return res;
+	return err_code;
 }	
 
 //------------------------------------------------------------------------------------

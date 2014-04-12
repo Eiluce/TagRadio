@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <string.h>
 
+
+#include "cfuhash.h"
 int main(int argc, char **argv)
 {
 
@@ -25,7 +27,7 @@ int main(int argc, char **argv)
 		num_points = ((uint16_t)atoi(argv[1]))%1000;
 		scan_interval = ((uint16_t)atoi(argv[2]))%0x4000;
 		scan_window = ((uint16_t)atoi(argv[3]))%0x4000;
-		}		
+	}		
 		
 	fprintf(stderr, "-------------------------\n");
 	fprintf(stderr, "- OPENING SOCKETS TESTS -\n");
@@ -37,7 +39,7 @@ int main(int argc, char **argv)
 	display_hci_socket_list();
 
 
-	/*	fprintf(stderr, "\n-------------------------\n");
+	fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- SCANNING DEVICES TEST -\n");
 	fprintf(stderr, "-------------------------\n");
 	hci_device_table_t device_table = hci_scan_devices(&hci_socket, 5, 10, IREQ_CACHE_FLUSH);
@@ -47,7 +49,7 @@ int main(int argc, char **argv)
 	fprintf(stderr, "\n-----------------------------\n");
 	fprintf(stderr, "- GETING RSSI MEASURES TEST -\n");
 	fprintf(stderr, "-----------------------------\n");
-	hci_get_RSSI(NULL, NULL, 15, 20);*/
+	hci_get_RSSI(NULL, NULL, 5, 20);
 
 	fprintf(stderr, "\n---------------------------------\n");
 	fprintf(stderr, "- GETING RSSI MEASURES TEST (LE)-\n");
@@ -57,12 +59,15 @@ int main(int argc, char **argv)
 	fprintf(stderr, " -> %ums scan_interval. \n", scan_interval);
 	fprintf(stderr, " -> %ums scan_window. \n\n", scan_window);
 
-	bdaddr_t test;
-	str2ba("1C:BA:8C:20:E9:1E", &test);
+	hci_device_t test;
+	str2ba("1C:BA:8C:20:E9:1E", &(test.mac));
+	test.add_type = PUBLIC_DEVICE_ADDRESS;
+	strcpy(test.custom_name, "MON SUPER SENSOR !");
 	hci_LE_clear_white_list(NULL);
 	hci_LE_add_white_list(&hci_socket1, &test, 0x00); // 0x00 : PDA 
 	hci_LE_get_RSSI(&hci_socket1, NULL, num_points, 0x00, scan_interval, scan_window, 0x00, 0x00);	
 
+	
 	fprintf(stderr, "\n-------------------------\n");
 	fprintf(stderr, "- CLOSING SOCKETS TESTS -\n");
 	fprintf(stderr, "-------------------------\n");
@@ -74,9 +79,13 @@ int main(int argc, char **argv)
 	close_all_sockets();
 	display_hci_socket_list();
 
-		/*	uint64_t states = 0;
+	uint64_t states = 0;
 	hci_LE_read_supported_states(NULL, &states);
-	hci_display_LE_supported_states(states);*/
+	hci_display_LE_supported_states(states);
+
+	hci_destroy_device_table();
+
+
 
 	return EXIT_SUCCESS;
 }

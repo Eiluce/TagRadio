@@ -11,3 +11,16 @@
 *.lai
 *.la
 *.a
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/Makefile
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/Makefile.Debug
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/Makefile.Release
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/Visualiseur.exe
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/data/data.txt
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/img/demo/mainWindow.png
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/img/demo/queryBox.png
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/img/sol.jpg
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/img/table.jpg
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/moc_mainwindow.cpp
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/moc_querybox.cpp
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/moc_reader.cpp
+build-Visualiseur-Desktop_Qt_5_2_1_MinGW_32bit-Debug/debug/moc_tablesizebox.cpp
