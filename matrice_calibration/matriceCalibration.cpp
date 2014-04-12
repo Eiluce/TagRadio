@@ -64,11 +64,11 @@ vector<double*> MatriceCalibration::getMatrice() {
  */
 double* MatriceCalibration::getElement(int line, int column) {
     try {
-        if (line >= this->getNbLines() || column >= this->getNbColumns() 
+        if (line >= this->getNbLines() || column >= this->getNbColumns()
                 || line < 0 || column < 0) {
             throw 0;
         }
-    }    catch (int code) {
+    } catch (int code) {
         cerr << "Error: MatriceCalibration::getElement out of bounds.\n";
         return NULL;
     }
@@ -92,12 +92,12 @@ int MatriceCalibration::setElement(int line, int column, double* elem) {
                 || line < 0 || column < 0) {
             throw 0;
         }
-    }    catch (int code) {
+    } catch (int code) {
         cerr << "Error: MatriceCalibration::setElement out of bounds.\n";
         return 1;
     }
     int numCase = line * this->getNbColumns() + column;
-    this->matrice[numCase] = (double*) calloc(4, sizeof(double_t));
+    this->matrice[numCase] = (double*) calloc(NB_SENSORS + 1, sizeof (double_t));
     double* matriceCase = this->matrice[numCase];
     for (int i = 0; i < NB_SENSORS; i++) {
         matriceCase[i] = elem[i];
@@ -130,17 +130,32 @@ pair<int, int> MatriceCalibration::bestPosition(double* mesure) {
     double distMin = INFINITY;
     double distCour;
     int matSize = this->matrice.size();
-    for (int i = 0 ; i < matSize; i++) {
+    for (int i = 0; i < matSize; i++) {
         if (this->matrice[i] != NULL) {
             distCour = MatriceCalibration::distance(mesure, this->matrice[i]);
             if (distCour < distMin) {
                 distMin = distCour;
-                bestCase = i; 
+                bestCase = i;
             }
         }
     }
     coordBestCase.first = bestCase / this->getNbColumns();
     coordBestCase.second = bestCase % this->getNbColumns();
-    
+
     return coordBestCase;
+}
+
+/**
+ * Met à jour la distance de chaque case par rapport à le mesure.
+ * La distance est stoquée dans la dernière case de chaque tableau.
+ * @param mesure La mesure faite.
+ * @return 
+ */
+void MatriceCalibration::setDistances(double* mesure) {
+    int matSize = this->matrice.size();
+    for (int i = 0; i < matSize; i++) {
+        if (this->matrice[i] != NULL) {
+            this->matrice[i][NB_SENSORS] = MatriceCalibration::distance(this->matrice[i], mesure);
+        }
+    }
 }

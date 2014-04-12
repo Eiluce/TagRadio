@@ -21,8 +21,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     QPixmap background(QCoreApplication::applicationDirPath() +
                                    "/img/sol.jpg");
+
     p_scene->setBackgroundBrush(QBrush(background));
-    p_view->setGeometry(10,10,510,510);
+    p_view->setGeometry(10,10,505,505);
 
     p_addPosition = new QPushButton("Ajouter position", this);
     p_addPosition->setGeometry(590,90, 120, 30);
@@ -32,6 +33,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     p_openFile = new QPushButton("Ouvrir fichier", this);
     p_openFile->setGeometry(590, 170, 120, 30);
+
+    p_changeTableSize = new QPushButton("Changer taille table", this);
+    p_changeTableSize->setGeometry(590, 210, 120, 30);
 
     p_quit = new QPushButton("Quitter", this);
     p_quit->setGeometry(600, 560, 100, 30);
@@ -59,6 +63,8 @@ MainWindow::MainWindow(QWidget *parent) :
                      qApp, SLOT(quit()));
     QObject::connect(p_openFile, SIGNAL(clicked()),
                      this, SLOT(readMatrixFromFile()));
+    QObject::connect(p_changeTableSize, SIGNAL(clicked()),
+                     this, SLOT(changeTableSize()));
 
 
 }
@@ -192,4 +198,22 @@ MainWindow::~MainWindow() {
 }
 
 
+void MainWindow::changeTableSize() {
+    TableSizeBox *tableBox = new TableSizeBox(numberOfColumns, numberOfRows);
+    tableBox->show();
+    QObject::connect(tableBox, SIGNAL(sendTableValues(int,int,int,int)),
+                     this, SLOT(modifyTableSize(int,int,int,int)));
+}
+
+void MainWindow::modifyTableSize(int p1X, int p1Y, int p2X, int p2Y) {
+    p_scene->removeItem(table);
+    QPixmap woodPix(QCoreApplication::applicationDirPath() +
+                                   "/img/table.jpg");
+    int topX = qMin(p1X, p2X);
+    int topY = qMin(p1Y, p2Y);
+    int sizeX = (qMax(p1X, p2X) - topX + 1) * sizeRectX;
+    int sizeY = (qMax(p1Y, p2Y) - topY + 1) * sizeRectY;
+    table = p_scene->addRect( (topX - 1) * sizeRectX, (topY - 1) * sizeRectY,
+                      sizeX, sizeY, QPen(), QBrush(woodPix));
+}
 

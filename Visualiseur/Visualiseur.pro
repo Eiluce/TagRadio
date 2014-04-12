@@ -15,10 +15,12 @@ TEMPLATE = app
 SOURCES += main.cpp\
         mainwindow.cpp \
     querybox.cpp \
-    reader.cpp
+    reader.cpp \
+    tablesizebox.cpp
 
 HEADERS  += mainwindow.h \
     querybox.h \
-    reader.h
+    reader.h \
+    tablesizebox.h
 
 FORMS    +=
