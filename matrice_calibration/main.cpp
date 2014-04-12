@@ -1,4 +1,7 @@
 #include "matriceCalibration.h"
+#include <zmq.hpp>
+#include <string>
+#include <unistd.h>
 #include <iostream>
 
 using namespace std;
@@ -6,6 +9,19 @@ using namespace std;
 int main(int argc, char *argv[])
 {
     
+   // Prepare our context and socket
+    zmq::context_t context (1);
+    zmq::socket_t socket (context, ZMQ_REP);
+    socket.bind ("tcp://*:6666");
+
+    while (true) {
+        zmq::message_t request;
+
+        // Wait for next request from client
+        socket.recv (&request);
+        std::cout << &request << std::endl;
+
+    }
     //Initialisation d'une matrice 5x4.
     MatriceCalibration* m = new MatriceCalibration(5, 4);
     cout << "nb éléms:" << m->getMatrice().size() << endl;

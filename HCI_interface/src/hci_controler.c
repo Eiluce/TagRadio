@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <sys/poll.h>
 #include <sys/ioctl.h>
+#include <zmq.h>
+#include <string.h>
 
 void hci_compute_filter(struct hci_filter *flt, ...) {
 	va_list  pa;
@@ -640,8 +642,16 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	//if (file == NULL) {
 
 	fprintf(stderr, "6. Checking response events...\n");
+
+	fprintf (stderr,"Connecting to server…\n");
+	void *context = zmq_ctx_new ();
+	void *requester = zmq_socket (context, ZMQ_REQ);
+	zmq_connect (requester, "tcp://localhost:6666");
+	
 	while(!canceled && (!(max_rsp > 0) || (k < max_rsp))) {
 		p.revents = 0;
+		char buffer [10];
+
 
 		// Polling the BT device for an event :
 		if (poll(&p, 1, 5000) > 0) {
@@ -707,6 +717,9 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 						hci_device_display(hci_device);
 						fprintf(stdout, "%idb\n", *rssi);
 						fprintf(file, "%i\n", *rssi);
+
+						printf ("Sending rssi %i…\n", *rssi);
+						zmq_send (requester, rssi, 5, 0);
 						k++;
 					}
 					break;
@@ -749,7 +762,8 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 		// Restoring the old filter :
 		set_hci_socket_filter(*hci_socket, &old_flt);
 	}
-	
+	zmq_close (requester);
+	zmq_ctx_destroy (context);
 	fclose(file);
 
 }

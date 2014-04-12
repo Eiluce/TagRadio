@@ -3,9 +3,17 @@
 #include "hci_utils.h"
 #include "list.h"
 #include <stdlib.h>
+#include <zmq.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
 
 int main(int argc, char **argv)
 {
+
+	
+
+
 	//fprintf(stderr, "**************%i %i %i************\n", atoi(argv[1]),atoi(argv[2]), atoi(argv[3]));
 	uint16_t num_points, scan_interval, scan_window;
 	if (argc < 4) {
@@ -22,8 +30,10 @@ int main(int argc, char **argv)
 	fprintf(stderr, "-------------------------\n");
 	fprintf(stderr, "- OPENING SOCKETS TESTS -\n");
 	fprintf(stderr, "-------------------------\n");
-	hci_socket_t hci_socket = open_hci_socket(NULL);
-	hci_socket_t hci_socket1 = open_hci_socket(NULL);
+	//hci_socket_t hci_socket = open_hci_socket(NULL);
+	bdaddr_t add;
+	str2ba("00:02:72:CD:29:66", &add);
+	hci_socket_t hci_socket1 = open_hci_socket(&add);
 	display_hci_socket_list();
 
 
@@ -50,7 +60,7 @@ int main(int argc, char **argv)
 	bdaddr_t test;
 	str2ba("1C:BA:8C:20:E9:1E", &test);
 	hci_LE_clear_white_list(NULL);
-	hci_LE_add_white_list(&hci_socket, &test, 0x00); // 0x00 : PDA 
+	hci_LE_add_white_list(&hci_socket1, &test, 0x00); // 0x00 : PDA 
 	hci_LE_get_RSSI(&hci_socket1, NULL, num_points, 0x00, scan_interval, scan_window, 0x00, 0x00);	
 
 	fprintf(stderr, "\n-------------------------\n");

@@ -2,7 +2,7 @@ CC = g++
 CFLAGS = -Wall -pipe -O2 -Wall -W -D_REENTRANT
 EXEC_NAME = main
 INCLUDES =
-LIBS =
+LIBS = -lzmq
 OBJ_FILES = matriceCalibration.o main.o
 INSTALL_DIR = /usr/bin
 
