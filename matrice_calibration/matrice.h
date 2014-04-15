@@ -4,7 +4,7 @@
 #define NB_CAPTEURS 4
 
 struct Valeurs {
-	double table[NB_CAPTEURS];
+	double table[NB_CAPTEURS+1];
 };
 
 
@@ -28,8 +28,6 @@ void afficherMatrice(struct Matrice *m);
 struct Valeurs getElement(struct Matrice *m,int line, int column);
 
 void setElement(struct Matrice *m, int line, int column, struct Valeurs elem);
-
-static double distance(struct Valeurs *v1, struct Valeurs* v2);
 
 struct Point *bestPosition(struct Matrice *m,struct Valeurs* mesure);
 

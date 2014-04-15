@@ -13,7 +13,7 @@ struct Matrice *CreateMatrice(int nbLines,int nbColumns)
 	struct Matrice *result = malloc(sizeof(struct Matrice));
 	result->nbColumns = nbColumns;
 	result->nbLines = nbLines;
-	result->val = calloc(nbColumns,sizeof(double *));
+	result->val = calloc(nbLines,sizeof(double *));
 
 	for (int i = 0; i < nbLines; i++) {
 		result->val[i] = calloc(nbColumns, sizeof(struct Valeurs));
@@ -30,7 +30,7 @@ struct Matrice *CreateMatrice(int nbLines,int nbColumns)
 
 void afficherValeurs(struct Valeurs v)
 {
-	for (int i =0; i < NB_CAPTEURS; i++) {
+	for (int i =0; i < NB_CAPTEURS + 1; i++) {
 		printf("Valeur : %f\n",v.table[i]);
 	}
 }
@@ -39,8 +39,8 @@ void afficherValeurs(struct Valeurs v)
 void afficherMatrice(struct Matrice *m)
 {
 	for (int i=0; i < m->nbLines; i++) {
-		printf("Ligne n° :%i\n",i);
 		for (int j=0; j < m->nbColumns; j++) {
+		        printf("Ligne n° :%i ",i);
 			printf("Colonne n° :%i\n",j);
 			afficherValeurs(m->val[i][j]);
 		}
@@ -95,8 +95,8 @@ struct Point *bestPosition(struct Matrice *m,struct Valeurs* mesure)
 
 void setDistances(struct Matrice *m,struct Valeurs* mesure) {
     int matSize = m->nbColumns * m->nbLines;
-    for (int i = 0; i < m->nbColumns; i++) {
-    	for (int j=0; j < m->nbLines; j++) {
+    for (int i = 0; i < m->nbLines; i++) {
+    	for (int j=0; j < m->nbColumns; j++) {
 	        if (m->val[i] != NULL) {
 	            m->val[i][j].table[NB_CAPTEURS] = distance(&m->val[i][j], mesure);
 	        }

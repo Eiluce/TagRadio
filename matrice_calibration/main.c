@@ -38,6 +38,8 @@ int main()
     struct Valeurs res1;
     res1 = getElement(m,1, 3);
 
+    v1.table[2] = 0;
+
     //Test de la recherche de meilleure position.
     
     struct Point *bestPos;
@@ -51,6 +53,6 @@ int main()
     printf("setDistance avec elem2\n");
     setDistances(m,&v2);
     printf("Distance écrite dans (0,2): %f\n",getElement(m,0,2).table[4]);
-	
+    
     return 0;
 }
