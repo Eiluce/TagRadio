@@ -141,6 +141,17 @@ void setDistances(struct Matrice *m, struct Valeurs* mesure) {
 }
 
 /**
+ * Transforme les mesures brutes en un tableau d'entiers.
+ * @param mesures
+ * @return Le tableau d'entiers.
+ */
+int* getMesures(char* mesures) {
+    int* res = (int*) calloc(NB_MESURES, sizeof(int));
+    
+    return res;
+}
+
+/**
  * Calcule la moyenne des mesures.
  * @param mesures
  * @return La moyenne.

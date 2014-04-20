@@ -50,6 +50,8 @@ struct Point *bestPosition(struct Matrice *m,struct Valeurs* mesure);
 
 void setDistances(struct Matrice *m,struct Valeurs* mesure);
 
+int* getMesures(char* mesures);
+
 double moyenneMesures(int* mesures);
 
 void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFichier);

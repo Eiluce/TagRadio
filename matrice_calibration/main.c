@@ -63,7 +63,7 @@ int main() {
 
     generateData(m, &v1, "testMatrice.txt");
     
-    printf("Data générées dans testMatrice.txt\n")
+    printf("Data générées dans testMatrice.txt\n");
 
     return 0;
 }
