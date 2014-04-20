@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
+#include <time.h>
 /*
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
@@ -15,10 +15,10 @@ int main() {
     struct Matrice *m = CreateMatrice(5, 4);
 
     struct Valeurs val;
-    val.table[0] = 1;
-    val.table[1] = 2;
-    val.table[2] = 3;
-    val.table[3] = 4;
+    val.table[0] = -1;
+    val.table[1] = -2;
+    val.table[2] = -3;
+    val.table[3] = -4;
 
     setElement(m, 1, 1, val);
 
@@ -26,14 +26,14 @@ int main() {
 
     struct Valeurs v1;
     struct Valeurs v2;
-    v1.table[0] = 1;
-    v1.table[1] = 2;
-    v1.table[2] = 3;
-    v1.table[3] = 4;
-    v2.table[0] = 1;
-    v2.table[1] = 2;
-    v2.table[2] = 3;
-    v2.table[3] = 5;
+    v1.table[0] = -1;
+    v1.table[1] = -2;
+    v1.table[2] = -3;
+    v1.table[3] = -4;
+    v2.table[0] = -1;
+    v2.table[1] = -2;
+    v2.table[2] = -3;
+    v2.table[3] = -5;
 
     setElement(m, 1, 3, v1);
     setElement(m, 0, 2, v2);
@@ -63,12 +63,17 @@ int main() {
     for (int i = 0; i < NB_MESURES; i++) {
         printf("%i ", mesures[i]);
     }
+    printf("\n");
 
     generateData(m, &v2, "testMatrice.txt");
 
     sleep(3);
 
     generateData(m, &v1, "testMatrice.txt");
+    
+    sleep(2);
+    
+    generateDataFromMesures(m, "testMatrice.txt", "-1;-1;-1;-1;-1", "-2;-2;-2;-2;-2", "-3;-3;-3;-3;-3", "-4;-4;-4;-4;-4");
     
     printf("\nData générées dans testMatrice.txt\n");
 

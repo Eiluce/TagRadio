@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 /*
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
@@ -146,7 +147,6 @@ void setDistances(struct Matrice *m, struct Valeurs* mesure) {
  * @return Le tableau d'entiers.
  */
 int* getMesures(char* mesures) {
-    printf("getMesures\n");
     int* res = (int*) calloc(NB_MESURES, sizeof (int));
     int tmp = 0;
     int i = 0; //position dans la chaine
@@ -331,4 +331,41 @@ void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFich
     }
 
     freeList(list);
+}
+
+
+/**
+ * À partir de la matrice de calibration et de 4 séries de mesures,
+ * la fonction écrit dans nomFichier les n cases les plus probables.
+ * @param m La matrice de calibration.
+ * @param nomFichier Fichier où enregistrer les données.
+ * @param mesures1 Série de mesures 1.
+ * @param mesures2 Série de mesures 2.
+ * @param mesures3 Série de mesures 3.
+ * @param mesures4 Série de mesures 4.
+ */
+void generateDataFromMesures(struct Matrice* m, const char* nomFichier,
+        char* mesures1, char* mesures2, char* mesures3, char* mesures4) {
+    //Conversion en entiers
+    int* mesures1Int = getMesures(mesures1);
+    int* mesures2Int = getMesures(mesures2);
+    int* mesures3Int = getMesures(mesures3);
+    int* mesures4Int = getMesures(mesures4);
+
+    //Moyenne des différentes mesures stoquées dans un seul tableau.
+    struct Valeurs mesure;
+    mesure.table[0] = moyenneMesures(mesures1Int);
+    mesure.table[1] = moyenneMesures(mesures2Int);
+    mesure.table[2] = moyenneMesures(mesures3Int);
+    mesure.table[3] = moyenneMesures(mesures4Int);
+    
+    //Génération des données dans un fichier texte
+    generateData(m, &mesure, nomFichier);
+
+    //Libération des ressources.
+    free(mesures1Int);
+    free(mesures2Int);
+    free(mesures3Int);
+    free(mesures4Int);
+
 }

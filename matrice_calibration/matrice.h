@@ -56,4 +56,7 @@ double moyenneMesures(int* mesures);
 
 void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFichier);
 
+void generateDataFromMesures(struct Matrice* m, const char* nomFichier,
+        char* mesures1, char* mesures2, char* mesures3, char* mesures4);
+
 #endif
