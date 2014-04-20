@@ -146,8 +146,26 @@ void setDistances(struct Matrice *m, struct Valeurs* mesure) {
  * @return Le tableau d'entiers.
  */
 int* getMesures(char* mesures) {
-    int* res = (int*) calloc(NB_MESURES, sizeof(int));
-    
+    printf("getMesures\n");
+    int* res = (int*) calloc(NB_MESURES, sizeof (int));
+    int tmp = 0;
+    int i = 0; //position dans la chaine
+    int j = 0; //position dans le tableau
+
+    while (mesures[i] != '\0') {
+        if (mesures[i] == '-') {
+            i++;
+            while (mesures[i] != '\0' && mesures[i] != ';') {
+                tmp = tmp * 10 - ((int) mesures[i] - '0');
+                i++;
+            }
+        }
+        res[j] = tmp;
+        tmp = 0;
+        j++;
+        if (mesures[i] != '\0') i++;
+    }
+
     return res;
 }
 

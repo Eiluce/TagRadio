@@ -56,6 +56,13 @@ int main() {
     printf("setDistance avec elem2\n");
     setDistances(m, &v2);
     printf("Distance écrite dans (0,2): %f\n", getElement(m, 0, 2).table[4]);
+    
+    printf("Test de conversion de mesures brutes:\n");
+    int* mesures = getMesures("-12;-13;-152;-112;-08");
+    printf("On devrait lire -12 -13 -152 -112 -8:\n");
+    for (int i = 0; i < NB_MESURES; i++) {
+        printf("%i ", mesures[i]);
+    }
 
     generateData(m, &v2, "testMatrice.txt");
 
@@ -63,7 +70,7 @@ int main() {
 
     generateData(m, &v1, "testMatrice.txt");
     
-    printf("Data générées dans testMatrice.txt\n");
+    printf("\nData générées dans testMatrice.txt\n");
 
     return 0;
 }
