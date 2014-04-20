@@ -4,6 +4,8 @@
 #define NB_CAPTEURS 4
 #define NB_MESURES 5
 
+int timeReference;
+
 /**
  * Ce que contient chaque case de la matrice.
  */

@@ -160,14 +160,14 @@ double moyenneMesures(int* mesures) {
  * @return 
  */
 static int sizeList(struct listPoints* list) {
-    printf("sizeList\n");
+    //printf("sizeList\n");
     int size = 0;
     struct listPoints* posCour = list;
     while (posCour != NULL) {
         posCour = posCour->next;
         size++;
     }
-    printf("%i\n", size);
+    //printf("%i\n", size);
     return size;
 }
 
@@ -177,7 +177,7 @@ static int sizeList(struct listPoints* list) {
  * @param list
  */
 static double removeHead(struct listPoints** list) {
-    printf("removeHead\n");
+    //printf("removeHead\n");
     struct listPoints* posCour = *list;
     double res = (*list)->point.proba;
     *list = (*list)->next;
@@ -190,7 +190,7 @@ static double removeHead(struct listPoints** list) {
  * @param list
  */
 static void formatProba(struct listPoints* list, double distMax) {
-    printf("formatProba\n");
+    //printf("formatProba\n");
     struct listPoints* posCour = list;
     while (posCour != NULL) {
         posCour->point.proba = 1 - posCour->point.proba / distMax;
@@ -199,7 +199,7 @@ static void formatProba(struct listPoints* list, double distMax) {
 }
 
 static void freeList(struct listPoints* list) {
-    printf("freeList\n");
+    //printf("freeList\n");
     while (list != NULL) {
         free(list);
         list = list->next;
@@ -207,10 +207,10 @@ static void freeList(struct listPoints* list) {
 }
 
 static double addPoint(struct listPoints** list, struct Point point, int size) {
-    printf("addPoint\n");
+    //printf("addPoint\n");
     double res;
     if (*list == NULL) { //Cas liste vide
-        printf("liste vide\n");
+        //printf("liste vide\n");
         *list = (struct listPoints*) malloc(sizeof (struct listPoints));
         (*list)->point = point;
         (*list)->next = NULL;
@@ -225,19 +225,19 @@ static double addPoint(struct listPoints** list, struct Point point, int size) {
             pos++;
         }
         if (posCour == NULL) { //insertion en queue
-            printf("queue\n");
+            //printf("queue\n");
             posPred->next = (struct listPoints*) malloc(sizeof (struct listPoints));
             posPred->next->point = point;
             posPred->next->next = NULL;
         } else {
             if (pos == 1) { //insertion en tête
-                printf("tete\n");
+                //printf("tete\n");
                 struct listPoints* newHead = (struct listPoints*) malloc(sizeof (struct listPoints));
                 newHead->point = point;
                 newHead->next = *list;
                 *list = newHead;
             } else { //insertion ailleur
-                printf("ailleurs\n");
+                //printf("ailleurs\n");
                 struct listPoints* newPoint = (struct listPoints*) malloc(sizeof (struct listPoints));
                 posPred->next = newPoint;
                 newPoint->point = point;
@@ -249,8 +249,17 @@ static double addPoint(struct listPoints** list, struct Point point, int size) {
             res = removeHead(list);
         }
     }
-    printf("fin add\n");
+    //printf("fin add\n");
     return res;
+}
+
+/**
+ * Retourne le temps écoulé en ms depuis le lancement du main.
+ * N'a pas de précision meilleure que la seconde.
+ * Ne pas oublier d'initialiser timeReference au début du main avec time(NULL)
+ */
+static int getTimeInMs() {
+    return (time(NULL) - timeReference)*1000;
 }
 
 /**
@@ -280,13 +289,15 @@ void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFich
     FILE* fichier = NULL;
     fichier = fopen(nomFichier, "a");
     if (fichier != NULL) {
-        printf("fichier != NULL\n");
+        //printf("fichier != NULL\n");
+        fprintf(fichier, "d %i\n\n", getTimeInMs());
         struct listPoints* posCour = list;
         while (posCour != NULL) {
-            printf("dans boucle\n");
+            //printf("dans boucle\n");
             fprintf(fichier, "%i %i %lf\n", posCour->point.x, posCour->point.y, posCour->point.proba);
             posCour = posCour->next;
         }
+        fprintf(fichier, "\n");
         fclose(fichier);
     }
 
