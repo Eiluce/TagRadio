@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <string.h>
+/*
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
+*/
 
 #include "matrice.h"
 
@@ -53,6 +55,8 @@ int main()
     printf("setDistance avec elem2\n");
     setDistances(m,&v2);
     printf("Distance écrite dans (0,2): %f\n",getElement(m,0,2).table[4]);
+    
+    generateData(m, &v2, "toto.txt");
     
     return 0;
 }

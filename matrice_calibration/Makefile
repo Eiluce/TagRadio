@@ -1,9 +1,10 @@
-CC = g++
-CFLAGS = -Wall -pipe -O2 -Wall -W -D_REENTRANT
-EXEC_NAME = maincpp
+CC = gcc
+CFLAGS = -Wall -pipe -O2 -Wall -W -D_REENTRANT -std=c99
+EXEC_NAME = main
 INCLUDES =
 #LIBS = -lzmq
-OBJ_FILES = matriceCalibration.o main.o
+LIBS = -lm
+OBJ_FILES = matrice.o main.o
 INSTALL_DIR = /usr/bin
 
 all : $(EXEC_NAME)
@@ -14,11 +15,11 @@ clean :
 $(EXEC_NAME) : $(OBJ_FILES)
 	$(CC) -o $(EXEC_NAME) $(OBJ_FILES) $(LIBS)
 
-%.o: %.cpp	
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
+#%.o: %.cpp	
+#	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
 
-%.o: %.cc
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
+#%.o: %.cc
+#	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
 
 %.o: %.c
-	gcc $(CFLAGS) $(INCLUDES) -o $@ -c $<
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
