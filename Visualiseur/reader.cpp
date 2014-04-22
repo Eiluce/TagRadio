@@ -6,9 +6,19 @@ Reader::Reader(QObject *parent) :
 {
     _abort = false;
     _working = false;
+
+
 }
 
 void Reader::doWork() {
+    if (_connected) {
+        this->doWorkOnline();
+    } else {
+        this->doWorkOffline();
+    }
+}
+
+void Reader::doWorkOffline() {
     QFile file(filename);
     if( !file.open( QIODevice::ReadOnly | QIODevice::Text ) )
         qFatal( "Could not open the file" );
@@ -27,17 +37,35 @@ void Reader::doWork() {
     QTime timer;
     timer.start();
     int instant;
+    int endOfLastPause = 0;
+    int totalPauseDuration = 0;
 
     while(!line.isNull()) {
 
         mutex.lock();
         bool abort = _abort;
+        bool pause = _pause;
         mutex.unlock();
 
         if (abort) {
-            std::cout << "Aborting..." << std::endl;
             break;
         }
+
+        if (pause) {
+            totalPauseDuration -= timer.elapsed();
+            while (pause) {
+                mutex.lock();
+                pause = _pause;
+                mutex.unlock();
+                Sleep(100);
+            }
+            totalPauseDuration += timer.elapsed();
+            endOfLastPause += timer.elapsed();
+            timer.start();
+            continue;
+        }
+
+
 
         line = textStream.readLine();
         lineNumber++;
@@ -60,9 +88,9 @@ void Reader::doWork() {
                                      + line + ", date invalide (reçue : " + lineContent[1] + ").");
             }
             dummy.setNum(timer.elapsed());
-            if (instant > timer.elapsed()) {
+            if (instant + totalPauseDuration > timer.elapsed() + endOfLastPause) {
                 // We have to wait
-                Sleep(instant - timer.elapsed());
+                Sleep(instant + totalPauseDuration - timer.elapsed() - endOfLastPause);
             }
             continue;
         }
@@ -76,6 +104,10 @@ void Reader::doWork() {
         if (!ok) {
             QMessageBox::warning(0, "Erreur", "Erreur lors du parcours du fichier à la ligne "
                                  + line + ", entier non reconnu (reçu : " + lineContent[0] + ").");
+
+            mutex.lock();
+            _working = false;
+            mutex.unlock();
             emit finished();
             return;
         }
@@ -83,6 +115,10 @@ void Reader::doWork() {
         if (!ok) {
             QMessageBox::warning(0, "Erreur", "Erreur lors du parcours du fichier à la ligne "
                                  + line + ", entier non reconnu (reçu : " + lineContent[1] + ").");
+
+            mutex.lock();
+            _working = false;
+            mutex.unlock();
             emit finished();
             return;
         }
@@ -90,6 +126,10 @@ void Reader::doWork() {
         if (!ok) {
             QMessageBox::warning(0, "Erreur", "Erreur lors du parcours du fichier à la ligne "
                                  + line + ", flottant non reconnu (reçu : " + lineContent[2] + ").");
+
+            mutex.lock();
+            _working = false;
+            mutex.unlock();
             emit finished();
             return;
         }
@@ -104,20 +144,40 @@ void Reader::doWork() {
     emit finished();
 }
 
-void Reader::requestWork() {
+void Reader::doWorkOnline() {
+
+}
+
+void Reader::requestWork(bool connected) {
     mutex.lock();
     _working = true;
     _abort = false;
     mutex.unlock();
 
+    _connected = connected;
+
     emit workRequested();
 }
+
 
 void Reader::abort() {
     if (_working) {
         _abort = true;
     }
 }
+
+void Reader::pauseWork(QPushButton *pauseButton) {
+    if (_pause) {
+        pauseButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/pause.png"));
+        _pause = false;
+    } else {
+        pauseButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/play.png"));
+        if (_working) {
+            _pause = true;
+        }
+    }
+}
+
 
 void Reader::setFilename(QString file) {
     this->filename = file;
