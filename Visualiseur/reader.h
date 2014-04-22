@@ -14,7 +14,6 @@
 #include <QThread>
 
 #include <iostream>
-#include <windows.h>
 
 class Reader : public QObject
 {

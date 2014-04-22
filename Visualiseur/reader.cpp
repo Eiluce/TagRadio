@@ -1,5 +1,13 @@
 #include "reader.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifdef linux
+#include <unistd.h>
+#endif
+
 
 Reader::Reader(QObject *parent) :
     QObject(parent)
@@ -57,7 +65,12 @@ void Reader::doWorkOffline() {
                 mutex.lock();
                 pause = _pause;
                 mutex.unlock();
+#ifdef _WIN32
                 Sleep(100);
+#endif
+#ifdef linux
+                usleep(100000);
+#endif
             }
             totalPauseDuration += timer.elapsed();
             endOfLastPause += timer.elapsed();
@@ -90,7 +103,12 @@ void Reader::doWorkOffline() {
             dummy.setNum(timer.elapsed());
             if (instant + totalPauseDuration > timer.elapsed() + endOfLastPause) {
                 // We have to wait
-                Sleep(instant + totalPauseDuration - timer.elapsed() - endOfLastPause);
+#ifdef _WIN32
+                Sleep((instant + totalPauseDuration - timer.elapsed() - endOfLastPause));
+#endif
+#ifdef linux
+                usleep((instant + totalPauseDuration - timer.elapsed() - endOfLastPause)*1000);
+#endif
             }
             continue;
         }
