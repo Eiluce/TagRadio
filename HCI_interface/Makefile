@@ -24,7 +24,7 @@ BOLD=\033[1m
 
 ${EXEC}: ${OBJ}
 	@printf "${BOLD}>> Creating the executable file...${NEUTRAL}\n"
-	$(CC) $^ -o ${EXEC} $(CFLAGS)
+	$(CC) $^ -o ${EXEC} $(CFLAGS) -lzmq
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@printf "${BOLD}>> Generating the object file \"$@\"...${NEUTRAL}${RED}\n"
