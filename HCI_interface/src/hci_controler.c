@@ -8,6 +8,8 @@
 #include <sys/poll.h>
 #include <sys/errno.h>
 #include <sys/ioctl.h>
+#include <zmq.h>
+#include <string.h>
 #include "cfuhash.h"
 
 static cfuhash_table_t *hci_devices_table = NULL;
@@ -129,6 +131,7 @@ static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardwar
 }
 
 //------------------------------------------------------------------------------------
+>>>>>>> facfcf54cbbed2392e30dde755fbd195efe32bc6
 
 void hci_compute_filter(struct hci_filter *flt, ...) {
 	va_list  pa;
@@ -768,6 +771,12 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 
 	fprintf(stderr, "6. Checking response events...\n");
 
+	fprintf (stderr,"Connecting to server…\n");
+	void *context = zmq_ctx_new ();
+	void *requester = zmq_socket (context, ZMQ_REQ);
+	zmq_connect (requester, "tcp://localhost:6666");
+	
+
 	int8_t n = 0;
 	int16_t len = 0;
 
@@ -838,6 +847,13 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 						hci_device.add_type = *address_type;
 						hci_compute_device_name(&hci_device);
 						strcpy(hci_device.custom_name, "UNKNOWN");
+						hci_device_display(hci_device);
+						fprintf(stdout, "%idb\n", *rssi);
+						fprintf(file, "%i\n", *rssi);
+
+						printf ("Sending rssi %i…\n", *rssi);
+						zmq_send (requester, rssi, 5, 0);
+						k++;
 						hci_register_device(hci_device);
 					} else {
 						hci_device = hci_get_device(*rsp_mac);
@@ -904,6 +920,9 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket,
 	if (file) {
 		fclose(file);
 	}
+	zmq_close (requester);
+	zmq_ctx_destroy (context);
+	fclose(file);
 
 	return;
 }

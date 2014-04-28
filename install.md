@@ -63,3 +63,24 @@ If you have a BT LE device, try to discover it :
 
 	hcitool lescan
 
+Access to the Raspberry without local network
+---------------------------------------------
+On the Raspberry, change the /etc/network/interfaces file adding :
+
+	iface eth0 inet static
+	address 192.168.1.21
+	netmask 255.255.255.0
+	network 192.168.1.0
+	gateway 192.168.1.22 
+
+Then on your computer, use the following command :
+
+	sudo ifconfig eth0 192.168.1.22
+
+Then, try to ping the Pi :
+
+	ping -c 3 192.168.1.21
+
+If you received packets, it's Ok, you can acces with SSH :
+
+	ssh pi@192.168.1.21

@@ -5,6 +5,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     thread = new QThread();
     reader = new Reader();
+    blueBox = new BluetoothBox(reader);
 
     reader->moveToThread(thread);
     connect(reader, SIGNAL(sendPoint(int,int,double)),
@@ -13,6 +14,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(thread, SIGNAL(started()), reader, SLOT(doWork()));
     connect(reader, SIGNAL(finished()),
             thread, SLOT(quit()) , Qt::DirectConnection);
+    connect(reader, SIGNAL(finished()),
+            this, SLOT(fileFinished()));
     connect(reader, SIGNAL(sendReset()), this, SLOT(resetPositions()));
 
     setFixedSize(800,600);
@@ -35,7 +38,20 @@ MainWindow::MainWindow(QWidget *parent) :
     p_openFile->setGeometry(590, 170, 120, 30);
 
     p_changeTableSize = new QPushButton("Changer taille table", this);
-    p_changeTableSize->setGeometry(590, 210, 120, 30);
+    p_changeTableSize->setGeometry(50, 560, 120, 30);
+
+    p_openBluetooth = new QPushButton("Connexion à l'appareil", this);
+    p_openBluetooth->setGeometry(590, 210, 120, 30);
+
+    pauseButton = new QPushButton("", this);
+    pauseButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/pause.png"));
+    pauseButton->setGeometry(590, 250, 30, 30);
+    pauseButton->setDisabled(true);
+
+    stopButton = new QPushButton("", this);
+    stopButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/stop.png"));
+    stopButton->setGeometry(630, 250, 30, 30);
+    stopButton->setDisabled(true);
 
     p_quit = new QPushButton("Quitter", this);
     p_quit->setGeometry(600, 560, 100, 30);
@@ -63,8 +79,14 @@ MainWindow::MainWindow(QWidget *parent) :
                      qApp, SLOT(quit()));
     QObject::connect(p_openFile, SIGNAL(clicked()),
                      this, SLOT(readMatrixFromFile()));
+    QObject::connect(p_openBluetooth, SIGNAL(clicked()),
+                     this, SLOT(readMatrixFromConnection()));
     QObject::connect(p_changeTableSize, SIGNAL(clicked()),
                      this, SLOT(changeTableSize()));
+    QObject::connect(pauseButton, SIGNAL(clicked()),
+                     this, SLOT(pauseRead()));
+    QObject::connect(stopButton, SIGNAL(clicked()),
+                     this, SLOT(stopRead()));
 
 
 }
@@ -183,10 +205,28 @@ void MainWindow::resetPositions() {
 
 void MainWindow::readMatrixFromFile() {
     QString filename = QFileDialog::getOpenFileName(this, tr("Ouvrir"), "", tr("Files(*.txt)"));
+    if (filename == 0) {
+        return;
+    }
     reader->abort();
     thread->wait();
     reader->setFilename(filename);
-    reader->requestWork();
+    p_openFile->setDisabled(true);
+    p_openBluetooth->setDisabled(true);
+    pauseButton->setDisabled(false);
+    stopButton->setDisabled(false);
+    reader->requestWork(false);
+
+}
+
+void MainWindow::readMatrixFromConnection() {
+    reader->abort();
+    thread->wait();
+    blueBox->show();
+    p_openFile->setDisabled(true);
+    p_openBluetooth->setDisabled(true);
+    pauseButton->setDisabled(false);
+    stopButton->setDisabled(false);
 
 }
 
@@ -215,5 +255,21 @@ void MainWindow::modifyTableSize(int p1X, int p1Y, int p2X, int p2Y) {
     int sizeY = (qMax(p1Y, p2Y) - topY + 1) * sizeRectY;
     table = p_scene->addRect( (topX - 1) * sizeRectX, (topY - 1) * sizeRectY,
                       sizeX, sizeY, QPen(), QBrush(woodPix));
+}
+
+void MainWindow::pauseRead() {
+    reader->pauseWork(pauseButton);
+}
+
+void MainWindow::stopRead() {
+    reader->abort();
+}
+
+void MainWindow::fileFinished() {
+    pauseButton->setDisabled(true);
+    stopButton->setDisabled(true);
+    p_openFile->setDisabled(false);
+    p_openBluetooth->setDisabled(false);
+
 }
 

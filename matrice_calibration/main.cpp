@@ -1,9 +1,15 @@
 #include "matriceCalibration.h"
+#include <string>
+#include <unistd.h>
 #include <iostream>
 
 using namespace std;
 
-int main(int argc, char *argv[]) {
+
+int main(int argc, char *argv[])
+{
+    
+
 
     //Initialisation d'une matrice 5x4.
     MatriceCalibration* m = new MatriceCalibration(5, 4);

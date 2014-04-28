@@ -12,6 +12,8 @@ TableSizeBox::TableSizeBox(int nbCol, int nbLin, QWidget *parent) :
     p_scene = new QGraphicsScene(this);
     p_view = new QGraphicsView(p_scene, this);
 
+    table = 0;
+
     p_instructions = new QLabel(this);
     p_instructions->setText("Entrez les coordonnées de deux coins opposés");
     p_instructions->setGeometry(75,10,300,30);
