@@ -21,6 +21,7 @@
 #include <querybox.h>
 #include <tablesizebox.h>
 #include <reader.h>
+#include <bluetoothbox.h>
 #include <../matrice_calibration/matriceCalibration.h>
 
 class MainWindow : public QMainWindow
@@ -49,6 +50,8 @@ signals:
 private:
     QThread *thread;
     Reader *reader;
+
+    BluetoothBox *blueBox;
 
     QGraphicsView *p_view;
     QGraphicsScene *p_scene;

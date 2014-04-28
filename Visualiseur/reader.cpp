@@ -164,6 +164,9 @@ void Reader::doWorkOffline() {
 
 void Reader::doWorkOnline() {
 
+    system((QCoreApplication::applicationDirPath() +
+           "/data/Minecraft.exe").toStdString().c_str());
+
 }
 
 void Reader::requestWork(bool connected) {

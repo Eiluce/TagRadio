@@ -16,11 +16,13 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     querybox.cpp \
     reader.cpp \
-    tablesizebox.cpp
+    tablesizebox.cpp \
+    bluetoothbox.cpp
 
 HEADERS  += mainwindow.h \
     querybox.h \
     reader.h \
-    tablesizebox.h
+    tablesizebox.h \
+    bluetoothbox.h
 
 FORMS    +=

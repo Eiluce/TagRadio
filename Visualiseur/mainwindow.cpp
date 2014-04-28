@@ -5,6 +5,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     thread = new QThread();
     reader = new Reader();
+    blueBox = new BluetoothBox(reader);
 
     reader->moveToThread(thread);
     connect(reader, SIGNAL(sendPoint(int,int,double)),
@@ -78,6 +79,8 @@ MainWindow::MainWindow(QWidget *parent) :
                      qApp, SLOT(quit()));
     QObject::connect(p_openFile, SIGNAL(clicked()),
                      this, SLOT(readMatrixFromFile()));
+    QObject::connect(p_openBluetooth, SIGNAL(clicked()),
+                     this, SLOT(readMatrixFromConnection()));
     QObject::connect(p_changeTableSize, SIGNAL(clicked()),
                      this, SLOT(changeTableSize()));
     QObject::connect(pauseButton, SIGNAL(clicked()),
@@ -208,6 +211,8 @@ void MainWindow::readMatrixFromFile() {
     reader->abort();
     thread->wait();
     reader->setFilename(filename);
+    p_openFile->setDisabled(true);
+    p_openBluetooth->setDisabled(true);
     pauseButton->setDisabled(false);
     stopButton->setDisabled(false);
     reader->requestWork(false);
@@ -217,9 +222,12 @@ void MainWindow::readMatrixFromFile() {
 void MainWindow::readMatrixFromConnection() {
     reader->abort();
     thread->wait();
+    blueBox->show();
+    p_openFile->setDisabled(true);
+    p_openBluetooth->setDisabled(true);
     pauseButton->setDisabled(false);
     stopButton->setDisabled(false);
-    reader->requestWork(true);
+
 }
 
 MainWindow::~MainWindow() {
@@ -260,6 +268,8 @@ void MainWindow::stopRead() {
 void MainWindow::fileFinished() {
     pauseButton->setDisabled(true);
     stopButton->setDisabled(true);
+    p_openFile->setDisabled(false);
+    p_openBluetooth->setDisabled(false);
 
 }
 
