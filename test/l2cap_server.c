@@ -16,7 +16,7 @@ struct routine_data_t {
 	uint16_t timeout;
 	uint8_t num_client;
 	uint16_t max_req;
-	l2cap_server_t server; // A METTRE EN MUTEX !!!!!!!!!!!!! POINTEUR ??????????? (MODIF ADD REMOTE CLIENTS)
+	l2cap_server_t server; 
 };
 	
 //------------------------------------------------------------------------------------
@@ -61,6 +61,7 @@ int8_t l2cap_server_create(l2cap_server_t *server, bdaddr_t *adapter, uint16_t p
 		/* On ne peut pas "bind" deux sockets sur le même couple (@, port) !*/
 		server->clients[i].server_sock = open_l2cap_socket(adapter, port+(i*2), 1);
 		if (server->clients[i].server_sock.sock >= 0) {
+			fprintf(stderr, "COUCOU %i...\n", server->clients[i].server_sock.sock);
 			opened_sockets++;
 		}
 	}
@@ -84,6 +85,7 @@ int8_t l2cap_server_create(l2cap_server_t *server, bdaddr_t *adapter, uint16_t p
 static void *socket_thread_routine(void *data) {
 	struct routine_data_t *routine_data = (struct routine_data_t *)data;
 	socklen_t sockaddr_len = sizeof(struct sockaddr_l2);
+
 	uint8_t i = routine_data->num_client;
 	int8_t sock = routine_data->server.clients[i].server_sock.sock;
 	uint16_t timeout = routine_data->timeout;
@@ -92,7 +94,24 @@ static void *socket_thread_routine(void *data) {
 	if (sock >= 0) {
 		listen(sock, 1);
 		fprintf(stderr, "Connexion en attente sur la socket %i...\n", sock);
-		// TIMEOUT SUR ACCEPT ?????????????????????
+
+		// Maintenant que la socket est en attente de connexion, on va vérifier l'arrivée de connexions éventuelles et les accepter.
+		struct pollfd p;
+		int8_t n = 0;
+		p.fd = sock;
+		p.events = POLLIN;
+		while ((n = poll(&p, 1, timeout)) < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				continue;
+			perror("server_routine_accept : error while polling socket");
+			goto end;
+		}
+		
+		if (!n) {
+			errno = ETIMEDOUT;
+			perror("server_routine_accept : error while polling socket");
+			goto end;
+		}
 		routine_data->server.clients[i].conn_id = accept(sock,
 								 (struct sockaddr *)&(routine_data->server.clients[i].rem_addr),
 								 &sockaddr_len);
@@ -126,10 +145,10 @@ static void *socket_thread_routine(void *data) {
 		}
 		while ((bytes_read = read(routine_data->server.clients[i].conn_id,
 					 routine_data->server.clients[i].buffer,
-					 sizeof(routine_data->server.clients[i].buffer))) < 0) {
+					 routine_data->server.buffer_length)) < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
-			perror("check_cmd_complete : error while reading socket.\n");
+			perror("server_routine : error while reading socket.\n");
 			goto end;
 		}
 		if (bytes_read == 0) {
@@ -137,7 +156,7 @@ static void *socket_thread_routine(void *data) {
 			continue;
 		}
 		num_req++;
-		if (strcmp(routine_data->server.clients[i].buffer, "STOP") == 0) {
+		if (strcmp(routine_data->server.clients[i].buffer, "CLOSE") == 0) {
 			thread_launched = 0;
 		}
 		routine_data->server.treat_buffer(routine_data->server, i);		
@@ -163,13 +182,15 @@ int8_t l2cap_server_launch(l2cap_server_t *server, uint16_t timeout, uint16_t ma
 	}
 
 	pthread_t server_threads[server->max_clients];
-	struct routine_data_t routine_data;
-	routine_data.server = *server;
-	routine_data.timeout = timeout;
-	routine_data.max_req = max_req;
+	struct routine_data_t routine_data[server->max_clients];
 	for (uint8_t i = 0; i < server->max_clients; i++) {
-		routine_data.num_client = i;
-		pthread_create(&(server_threads[i]), NULL, &(socket_thread_routine), (void *)&routine_data);
+		routine_data[i].server = *server;
+		routine_data[i].timeout = timeout;
+		routine_data[i].max_req = max_req;
+		routine_data[i].num_client = i;
+	}
+	for (uint8_t i = 0; i < server->max_clients; i++) {
+		pthread_create(&(server_threads[i]), NULL, &(socket_thread_routine), (void *)&routine_data[i]);
 	}
 
 	for (uint8_t i = 0; i < server->max_clients; i++) {

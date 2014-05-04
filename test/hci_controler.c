@@ -93,13 +93,13 @@ static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardwar
 		while ((n = poll(&p, 1, 500)) < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
-			perror("check_cmd_complete : error while polling socket.\n");
+			perror("check_cmd_complete : error while polling socket");
 			goto fail;
 		}
 	
 		if (!n) {
 			errno = ETIMEDOUT;
-			perror("check_cmd_complete : error while polling socket.\n");
+			perror("check_cmd_complete : error while polling socket");
 			goto fail;
 		}
 
@@ -107,7 +107,7 @@ static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardwar
 		while ((len = read(hci_socket->sock, buf, sizeof(buf))) < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
-			perror("check_cmd_complete : error while reading socket.\n");
+			perror("check_cmd_complete : error while reading socket");
 			goto fail;
 		}
 
@@ -470,9 +470,11 @@ bt_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 //------------------------------------------------------------------------------------
 
 // TODO : MODIFIER POUR FORCER L'ACCEPTATION DE PAQUETS DUPLIQUES SINON ON AURA TOUT LE TEMPS QU'UNE MESURE AVEC UN DONGLE STYLE BELKIN....
-void hci_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
+char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 		  bdaddr_t *mac, uint8_t duration, uint16_t max_rsp) {
 	
+	// Resulting string :
+	char *res = NULL;
 
 	// HCI_Filter structure :
 	struct hci_filter flt;	
@@ -499,7 +501,7 @@ void hci_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 	char socket_err = 0;
 	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
 	if (socket_err) {
-		return;
+		return NULL;
 	}
 
 	// Creating our filter :
@@ -569,21 +571,22 @@ void hci_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 	int8_t n = 0;
 	int16_t len = 0;
 
+	res = calloc(6*max_rsp, sizeof(char));
+	memset(res, 0, sizeof(res));
+	res[0] = '\0';
 	while(!canceled) {
 		p.revents = 0;
 		n = 0;
 		len = 0;
 
 		// Polling the BT device for an event :
-		if ((n = poll(&p, 1, -1)) < 0) {
+		if ((n = poll(&p, 1, 500)) < 0) {
 			if (errno == EAGAIN || EINTR) {
 				continue;
 			}
 			perror("hci_get_RSSI : error while polling the socket");
 			canceled = 1;
-		}
-		if (canceled) {
-			break;
+			goto end;
 		}
 
 		if (!n) {
@@ -597,9 +600,7 @@ void hci_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 				continue;
 			perror("hci_get_RSSI : error while reading the socket");
 			canceled = 1;
-		}
-		if (canceled) {
-			break;
+			goto end;
 		}
 
 		if (len == 0) {
@@ -652,13 +653,14 @@ void hci_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 				int8_t *rssi = (int8_t *)(event_parameter + (6+1+1+3+2)*num_results + i); 
 			
 				bt_device_display(bt_device);
-				if (remote_sock && *remote_sock >= 0) {
+				if (file_descriptor && *file_descriptor >= 0) {
 					char rssi_string[10] = {0};
 					sprintf(rssi_string, "%i \n", *rssi);
-					write(*remote_sock, rssi_string, sizeof(rssi_string));
+					write(*file_descriptor, rssi_string, sizeof(rssi_string));
 				} 
-				fprintf(stdout, "%idb \n", *rssi);
-					
+				char rssi_string_val[5] = {0};
+				sprintf(rssi_string_val, "%i ;", *rssi);
+				strcat(res, rssi_string_val);
 			}
 			break;
 
@@ -686,16 +688,18 @@ void hci_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 		}
 	}
 
-	return;
+	return res;
 }
 
 //------------------------------------------------------------------------------------
 
 // TESTER SI ON RECOIT AUSSI DES PAQUEST NON LE (MODIFIER FILTRE)
-void hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
+char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 		     bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint16_t scan_interval,
 		     uint16_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy) {
   
+	// Resulting string :
+	char *res = NULL;
 
 	FILE *file = NULL;
 
@@ -704,7 +708,7 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 	char socket_err = 0;
 	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
 	if (socket_err) {
-		return;
+		return NULL;
 	}
 
 	fprintf(stderr, " [DONE]\n");
@@ -776,6 +780,10 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 
 	int8_t n = 0;
 	int16_t len = 0;
+
+	res = calloc(6*max_rsp, sizeof(char));
+	memset(res, 0, sizeof(res));
+	res[0] = '\0';
 
 	while(!canceled && (!(max_rsp > 0) || (k < max_rsp))) {
 		p.revents = 0;
@@ -868,17 +876,18 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 
 					// Display info :
 					bt_device_display(bt_device);
-					fprintf(stdout, "%idb\n", *rssi);
 
-					if (remote_sock && *remote_sock >= 0) {
+					if (file_descriptor && *file_descriptor >= 0) {
 						char rssi_string[10] = {0};
 						sprintf(rssi_string, "%i \n", *rssi);
-						write(*remote_sock, rssi_string, sizeof(rssi_string));
+						write(*file_descriptor, rssi_string, sizeof(rssi_string));
 					}
-					fprintf(stdout, "%idb \n", *rssi);
 					if (file) {
 						fprintf(file, "%i\n", *rssi);
 					}
+					char rssi_string_val[5] = {0};
+					sprintf(rssi_string_val, "%i ;", *rssi);
+					strcat(res, rssi_string_val);
 					k++;
 				}
 				break;
@@ -920,6 +929,6 @@ void hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *remote_sock,
 		fclose(file);
 	}
 
-	return;
+	return res;
 }
 

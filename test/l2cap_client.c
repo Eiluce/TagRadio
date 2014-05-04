@@ -6,18 +6,27 @@
 #include <bluetooth/l2cap.h>
 #include <sys/unistd.h>
 
-static void treat_buffer_default_func(char *buffer) {
-	fprintf(stderr, "Buffer trace : %s\n", buffer);
+static void treat_buffer_default_func(l2cap_client_t client) {
+	fprintf(stderr, "Buffer trace : %s\n", client.buffer);
 	return;
 }
 
-static void send_request_default_func(int8_t sock, char *request) {
-	write(sock, request, sizeof(request));
+static void send_request_default_func(l2cap_client_t client, uint8_t req_type) {
+	if (client.l2cap_socket.sock < 0) {
+		fprintf(stderr, "client_send_request error : invalid socket descriptor.\n");
+		return;
+	}
+	char request[] = "Request echo.";
+	write(client.l2cap_socket.sock, request, sizeof(request));
 	return;
 }
+
+//------------------------------------------------------------------------------------
 
 int8_t l2cap_client_create(l2cap_client_t *client, bdaddr_t *server_add, uint16_t port, 
-			   uint16_t buffer_length, void (*treat_buffer_func)(char *buffer), void (*send_request_func)(int8_t sock, char *request)) {
+			   uint16_t buffer_length, 
+			   void (*treat_buffer_func)(l2cap_client_t client),
+			   void (*send_request_func)(l2cap_client_t client, uint8_t req_type)) {
 	
 	if (!client) {
 		fprintf(stderr, "l2cap_client_create error : invalid client reference.\n");
@@ -48,15 +57,21 @@ int8_t l2cap_client_create(l2cap_client_t *client, bdaddr_t *server_add, uint16_
 	} else {
 		client->send_request = send_request_func;
 	}
+
+	return 0;
 }
 
-extern int8_t l2cap_client_connect(l2cap_client_t *client, uint16_t timeout) {
+//------------------------------------------------------------------------------------
+
+int8_t l2cap_client_connect(l2cap_client_t *client) {
 	return connect(client->l2cap_socket.sock, 
 		       (struct sockaddr *)&(client->l2cap_socket.sockaddr),
 		       sizeof(client->l2cap_socket.sockaddr));
 }
 
-extern void l2cap_client_close(l2cap_client_t *client) {
+//------------------------------------------------------------------------------------
+
+void l2cap_client_close(l2cap_client_t *client) {
 	free(client->buffer);
 	close(client->l2cap_socket.sock);
 }
