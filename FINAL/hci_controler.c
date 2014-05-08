@@ -8,9 +8,12 @@
 #include <sys/poll.h>
 #include <sys/errno.h>
 #include <sys/ioctl.h>
+#include <pthread.h>
 #include "cfuhash.h"
 
 static cfuhash_table_t *bt_devices_table = NULL;
+
+static pthread_mutex_t hci_controller_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char hci_already_registered_device(bdaddr_t add) {
 	if (!bt_devices_table) {
@@ -65,6 +68,7 @@ void hci_destroy_device_table(void) {
 static inline void check_hci_socket_ptr(hci_socket_t **hci_socket, char *new_socket, char *err) {
 	*err = 0;
 	if (*hci_socket == NULL) {
+		fprintf(stderr, "WTF ?????????????????????????????????????\n");
 		*new_socket = 1;
 		*hci_socket = malloc(sizeof(hci_socket_t));
 		*(*hci_socket) = open_hci_socket(NULL);
@@ -87,10 +91,17 @@ static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardwar
 	unsigned char buf[HCI_MAX_EVENT_SIZE];
 	hci_event_hdr *hdr;
 
+	char new_socket = 0;
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
+		goto fail;
+	}
+
 	uint8_t try = 10;
 	while (try--) {
 		p.fd = hci_socket->sock; p.events = POLLIN;
-		while ((n = poll(&p, 1, 500)) < 0) {
+		while ((n = poll(&p, 1, DEFAULT_TIMEOUT)) < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			perror("check_cmd_complete : error while polling socket");
@@ -123,7 +134,12 @@ static char check_cmd_complete(hci_socket_t *hci_socket) {//http://forum.hardwar
 	}
 	errno = ETIMEDOUT;
 
- fail:
+ fail:	
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+	
 	return 0;
 
 }
@@ -179,7 +195,7 @@ int8_t hci_LE_read_local_supported_features(hci_socket_t *hci_socket, uint8_t *f
 		goto fail;
 	}
 
-	if (hci_send_req(hci_socket->sock, &rq, 200) < 0) {
+	if (hci_send_req(hci_socket->sock, &rq, DEFAULT_TIMEOUT) < 0) {
 		perror("hci_LE_read_local_supported_features");
 		goto fail;
 	}
@@ -233,7 +249,7 @@ int8_t hci_LE_read_supported_states(hci_socket_t *hci_socket, uint64_t *states) 
 		goto fail;
 	}
 
-	if (hci_send_req(hci_socket->sock, &rq, 200) < 0) {
+	if (hci_send_req(hci_socket->sock, &rq, DEFAULT_TIMEOUT) < 0) {
 		perror("hci_LE_read_supported_states");
 		goto fail;
 	}
@@ -271,7 +287,7 @@ int8_t hci_LE_clear_white_list(hci_socket_t *hci_socket) {
 		return -1;
 	}
 
-	if (hci_le_clear_white_list(hci_socket->sock, 100) < 0) {
+	if (hci_le_clear_white_list(hci_socket->sock, DEFAULT_TIMEOUT) < 0) {
 		perror("hci_le_clear_white_list");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
@@ -303,7 +319,7 @@ int8_t hci_LE_add_white_list(hci_socket_t *hci_socket, const bt_device_t bt_devi
 	if (add_type == UNKNOWN_ADDRESS_TYPE) {
 		add_type = PUBLIC_DEVICE_ADDRESS;
 	}
-	if (hci_le_add_white_list(hci_socket->sock, &(bt_device.mac), add_type, 100) < 0) {
+	if (hci_le_add_white_list(hci_socket->sock, &(bt_device.mac), add_type, DEFAULT_TIMEOUT) < 0) {
 		perror("hci_le_add_white_list");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
@@ -339,7 +355,7 @@ int8_t hci_LE_rm_white_list(hci_socket_t *hci_socket, const bt_device_t bt_devic
 	if (add_type == UNKNOWN_ADDRESS_TYPE) {
 		add_type = PUBLIC_DEVICE_ADDRESS;
 	}
-	if (hci_le_rm_white_list(hci_socket->sock, &(bt_device.mac), add_type, 100) < 0) {
+	if (hci_le_rm_white_list(hci_socket->sock, &(bt_device.mac), add_type, DEFAULT_TIMEOUT) < 0) {
 		perror("hci_le_rm_white_list");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
@@ -370,7 +386,7 @@ int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size) {
 		return -1;
 	}
 
-	if (hci_le_read_white_list_size(hci_socket->sock, size, 100) < 0) {
+	if (hci_le_read_white_list_size(hci_socket->sock, size, DEFAULT_TIMEOUT) < 0) {
 		perror("hci_le_get_white_list_size");
 		if (new_socket) {
 			close_hci_socket(hci_socket);
@@ -389,24 +405,30 @@ int8_t hci_LE_get_white_list_size(hci_socket_t *hci_socket, uint8_t *size) {
 
 //------------------------------------------------------------------------------------
 
-void hci_compute_device_name(bt_device_t *bt_device) {
+void hci_compute_device_name(hci_socket_t *hci_socket, bt_device_t *bt_device) {
 	if (!bt_device) {
 		fprintf(stderr, "hci_compute_device_name error : invalid device's reference.\n");
 		return;
 	}
-	hci_socket_t hci_socket = open_hci_socket(NULL);
-	if (hci_socket.sock < 0) {
+
+	char new_socket = 0;
+	char socket_err = 0;
+	check_hci_socket_ptr(&hci_socket, &new_socket, &socket_err);
+	if (socket_err) {
 		strcpy(bt_device->real_name, "[UNKNOWN]");
-		return;
 	}
 	
-	if (hci_read_remote_name(hci_socket.sock, &(bt_device->mac), NAME_LENGTH, 
-				 bt_device->real_name, 0) < 0) {
+	if (hci_read_remote_name(hci_socket->sock, &(bt_device->mac), NAME_LENGTH, 
+				 bt_device->real_name, DEFAULT_TIMEOUT) < 0) {
 		perror("hci_read_remote_name");
 		strcpy(bt_device->real_name, "[UNKNOWN]");
 	}
 
-	close_hci_socket(&hci_socket);
+	if (new_socket) {
+		close_hci_socket(hci_socket);
+		free(hci_socket);
+	} 
+
 }
 
 //------------------------------------------------------------------------------------
@@ -444,7 +466,7 @@ bt_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 	for (uint16_t i = 0; i < num_rsp; i++) {
 		memset(&(device_table[i]), 0, sizeof(bt_device_t));
 		device_table[i].mac = ii[i].bdaddr;
-		hci_compute_device_name(&(device_table[i]));
+		hci_compute_device_name(hci_socket, &(device_table[i]));
 		device_table[i].add_type = UNKNOWN_ADDRESS_TYPE; // Personal code to indicate that this data wasn't available.
 		strcpy(device_table[i].custom_name, "UNKNOWN");
 		if (!hci_already_registered_device(device_table[i].mac)) {
@@ -529,12 +551,14 @@ char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 	// Configuring the inquiry mode on the open HCI socket :
 	fprintf(stderr, "Configuring the inquiry mode...");
 	write_cp.mode = 0x01; // Inquiry Result format with RSSI (cf p878 spec').
+	pthread_mutex_lock(&hci_controller_mutex);
 	if (hci_send_cmd(hci_socket->sock, OGF_HOST_CTL, OCF_WRITE_INQUIRY_MODE, 
 			 WRITE_INQUIRY_MODE_CP_SIZE, &write_cp) < 0) {
 		fprintf(stderr, " [ERROR]\n");
 		perror("Can't set inquiry mode");
 		goto end;
 	}
+	pthread_mutex_unlock(&hci_controller_mutex);
 	if (check_cmd_complete(hci_socket)) {
 		fprintf(stderr, " [DONE]\n"); 
 	} else {
@@ -554,12 +578,14 @@ char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 	   WARNING : According to the spec (p 706), no Command Complete event will be sent to the host by using
 	   this command. This will only generate an Inquiry Complete event.
 	*/
+	pthread_mutex_lock(&hci_controller_mutex);
 	if (hci_send_cmd(hci_socket->sock, OGF_LINK_CTL, OCF_INQUIRY, INQUIRY_CP_SIZE, &cp) < 0) {
 		fprintf(stderr, " [ERROR]\n");
 		perror("Can't start inquiry");
 		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
+	pthread_mutex_unlock(&hci_controller_mutex);
 
 	// Connection poll structure, not initialized yet :
 	struct pollfd p;
@@ -580,7 +606,7 @@ char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 		len = 0;
 
 		// Polling the BT device for an event :
-		if ((n = poll(&p, 1, 500)) < 0) {
+		if ((n = poll(&p, 1, DEFAULT_TIMEOUT)) < 0) {
 			if (errno == EAGAIN || EINTR) {
 				continue;
 			}
@@ -629,7 +655,7 @@ char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 				bdaddr_t *rsp_mac = (bdaddr_t *)(event_parameter + 6*i); // @ on 6 bytes.
 				if (!hci_already_registered_device(*rsp_mac)) {
 					bt_device.mac = *rsp_mac;	
-					hci_compute_device_name(&bt_device);
+					hci_compute_device_name(hci_socket, &bt_device);
 					strcpy(bt_device.custom_name, "UNKNOWN");
 					bt_device.add_type  = UNKNOWN_ADDRESS_TYPE;
 					hci_register_device(bt_device);
@@ -677,7 +703,10 @@ char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 	}
 
 
- end :
+ end :	
+	if (pthread_mutex_trylock(&hci_controller_mutex) == 0) {
+		pthread_mutex_unlock(&hci_controller_mutex);
+	}
 	if (new_socket) {
 		close_hci_socket(hci_socket);
 		free(hci_socket);
@@ -693,7 +722,6 @@ char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 
 //------------------------------------------------------------------------------------
 
-// TESTER SI ON RECOIT AUSSI DES PAQUEST NON LE (MODIFIER FILTRE)
 char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 		     bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint16_t scan_interval,
 		     uint16_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy) {
@@ -754,26 +782,30 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 	fprintf(stderr, " [DONE]\n");
 
 	fprintf(stderr, "4. Setting scan parameters...");
-	if(hci_le_set_scan_parameters(hci_socket->sock, scan_type, scan_interval, // cf p 1066 spec
-				      scan_window, own_add_type, scan_filter_policy, 0) < 0) { 
+	pthread_mutex_lock(&hci_controller_mutex);
+	if (hci_le_set_scan_parameters(hci_socket->sock, scan_type, scan_interval, // cf p 1066 spec
+				      scan_window, own_add_type, scan_filter_policy, 2*DEFAULT_TIMEOUT) < 0) { 
 		// last parameter is timeout (for reaching the controler) 0 = infinity.
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_parameters");
 		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
+	pthread_mutex_unlock(&hci_controller_mutex);
 
 	fprintf(stderr, "5. Enabling scan...");
-	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x00, 0) < 0) { // Duplicate filtering ? (cf p1069)
+	pthread_mutex_lock(&hci_controller_mutex);
+	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x00, 2*DEFAULT_TIMEOUT) < 0) { // Duplicate filtering ? (cf p1069)
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_enable");
 		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
+	pthread_mutex_unlock(&hci_controller_mutex);
 
 	char canceled = 0;
 	int k = 0;
-	file = fopen("./stats/res_rssi.txt", "w");
+	//file = fopen("./stats/res_rssi.txt", "w");
 	//if (file == NULL) {
 
 	fprintf(stderr, "6. Checking response events...\n");
@@ -791,7 +823,7 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 		len = 0;
 
 		// Polling the BT device for an event :
-		while ((n = poll(&p, 1, 10000)) < 0) {
+		while ((n = poll(&p, 1, 8000)) < 0) {
 			if (errno == EAGAIN || EINTR) {
 				continue;
 			}
@@ -850,7 +882,7 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 						address_type = (uint8_t *)(event_parameter + 1*num_reports + i);
 						bt_device.mac = *rsp_mac;
 						bt_device.add_type = *address_type;
-						hci_compute_device_name(&bt_device);
+						hci_compute_device_name(hci_socket, &bt_device);
 						strcpy(bt_device.custom_name, "UNKNOWN");
 						hci_register_device(bt_device);
 					} else {
@@ -907,14 +939,19 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 	fprintf(stderr, "Scan complete !\n");
 	
 	fprintf(stderr, "7. Disabling scan...");
-	if (hci_le_set_scan_enable(hci_socket->sock, 0x00, 0x00, 0) < 0) {
+	pthread_mutex_lock(&hci_controller_mutex);
+	if (hci_le_set_scan_enable(hci_socket->sock, 0x00, 0x00, 2*DEFAULT_TIMEOUT) < 0) {
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_disable");
 		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
+	pthread_mutex_unlock(&hci_controller_mutex);
 
  end :
+	if (pthread_mutex_trylock(&hci_controller_mutex) == 0) {
+		pthread_mutex_unlock(&hci_controller_mutex);
+	}
 	if (new_socket) {
 		close_hci_socket(hci_socket);
 		free(hci_socket);

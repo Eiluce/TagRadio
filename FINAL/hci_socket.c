@@ -13,11 +13,24 @@ static list_t *hci_socket_list = NULL;
 hci_socket_t open_hci_socket(bdaddr_t *controler) {
 	hci_socket_t result;
 	memset(&result, 0, sizeof(result));
-  	result.dev_id = hci_get_route(controler); 
+
+	if (controler) {
+		char add[18];
+		ba2str(controler, add);
+		result.dev_id = hci_devid(add);
+	} else {
+		result.dev_id = hci_get_route(NULL);
+	}
+			
+	if (result.dev_id < 0) {
+		perror("opening hci socket");
+		result.sock = -1;
+		return result;
+	}
+
 	result.sock = hci_open_dev(result.dev_id);
-	
-	if (result.dev_id < 0 || result.sock < 0) {
-		perror("opening socket");
+	if (result.sock < 0) {
+		perror("opening hci socket");
 		result.sock = -1;
 		return result;	
 	}

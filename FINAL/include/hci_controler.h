@@ -7,13 +7,14 @@
 #include <stdarg.h>
 #include "hci_socket.h"
 
-/* Function "hci_compute_filter" :
-   
-*/
+#define DEFAULT_TIMEOUT 3000
+
 extern void hci_compute_filter(struct hci_filter *flt, ...);
 
 extern bt_device_table_t hci_scan_devices(hci_socket_t *hci_socket,
 				       uint8_t duration, uint16_t max_rsp, long flags);
+
+extern void hci_compute_device_name(hci_socket_t *hci_socket, bt_device_t *bt_device);
 
 extern char *hci_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 			 bdaddr_t *mac, uint8_t duration, uint16_t max_rsp);	

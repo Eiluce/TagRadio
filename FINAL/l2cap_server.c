@@ -46,6 +46,11 @@ int8_t l2cap_server_create(l2cap_server_t *server, bdaddr_t *adapter, uint16_t p
 		return -1;
 	}
 
+	if (!adapter) {
+		fprintf(stderr, "l2cap_server_create error : invalid BT adapter reference.\n");
+		return -1;
+	}
+
 	if (!buffer_length) {
 		fprintf(stderr, "l2cap_server_create warning : null buffer, creation aborted.\n");
 		return -1;
