@@ -149,13 +149,13 @@ void MainWindow::sendPointProbValues() {
 
 void MainWindow::setPointProb(int posX, int posY, double prob){
 
-    if (posX > numberOfColumns) {
-        QMessageBox::warning(this, "Erreur", "L'abscisse entrée est trop grande.");
+    if (posX > numberOfColumns || posX < 0) {
+        QMessageBox::warning(this, "Erreur", "L'abscisse entrée est hors de la grille.");
         return;
     }
 
-    if (posY > numberOfRows) {
-        QMessageBox::warning(this, "Erreur", "L'ordonnée entrée est trop grande.");
+    if (posY > numberOfRows || posY < 0) {
+        QMessageBox::warning(this, "Erreur", "L'ordonnée entrée est hors de la grille.");
         return;
     }
 
@@ -165,19 +165,19 @@ void MainWindow::setPointProb(int posX, int posY, double prob){
     }
 
     QBrush brush(Qt::red);
-    if (prob >= 0.9) {
+    if (prob >= 0.8) {
         brush.setStyle(Qt::SolidPattern);
-    } else if (prob >= 0.8) {
-        brush.setStyle(Qt::Dense1Pattern);
-    } else if (prob >= 0.7) {
-        brush.setStyle(Qt::Dense2Pattern);
     } else if (prob >= 0.6) {
-        brush.setStyle( Qt::Dense3Pattern);
+        brush.setStyle(Qt::Dense1Pattern);
     } else if (prob >= 0.5) {
-        brush.setStyle(Qt::Dense4Pattern);
+        brush.setStyle(Qt::Dense2Pattern);
     } else if (prob >= 0.4) {
-        brush.setStyle(Qt::Dense5Pattern);
+        brush.setStyle( Qt::Dense3Pattern);
+    } else if (prob >= 0.3) {
+        brush.setStyle(Qt::Dense4Pattern);
     } else if (prob >= 0.2) {
+        brush.setStyle(Qt::Dense5Pattern);
+    } else if (prob >= 0.1) {
         brush.setStyle(Qt::Dense6Pattern);
     } else {
         brush.setStyle(Qt::Dense7Pattern);

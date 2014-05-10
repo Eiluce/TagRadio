@@ -1,13 +1,13 @@
 #include "bluetoothbox.h"
 
-BluetoothBox::BluetoothBox(Reader *reader, QWidget *parent) :
+BluetoothBox::BluetoothBox(Reader *reader,QWidget *parent) :
     QWidget(parent)
 {
     setFixedSize(400,200);
 
     p_ok = new QPushButton("Ok", this);
     p_quit = new QPushButton("Annuler", this);
-    p_startProgram = new QPushButton("Initialiser recherche");
+    p_startProgram = new QPushButton("Rechercher appareil");
 
     this->reader = reader;
 
@@ -22,5 +22,10 @@ BluetoothBox::BluetoothBox(Reader *reader, QWidget *parent) :
     p_startProgram->setGeometry(285, 20, 100, 20);
 
 
+    QObject::connect(p_quit, SIGNAL(clicked()), this, SLOT(closeReader()));
     QObject::connect(p_quit, SIGNAL(clicked()), this, SLOT(close()));
+}
+
+void BluetoothBox::closeReader() {
+    reader->abort();
 }

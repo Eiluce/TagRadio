@@ -44,9 +44,31 @@ void Reader::doWorkOffline() {
 
     QTime timer;
     timer.start();
+    int initialTime = 0;
     int instant;
     int endOfLastPause = 0;
     int totalPauseDuration = 0;
+
+    line = textStream.readLine();
+    lineNumber++;
+
+    if (line.isNull()) {
+        emit finished();
+        return;
+    }
+
+    if (!line.isEmpty()) {
+
+        lineContent = line.split(' ');
+        if (lineContent[0] == "d") {
+            instant = lineContent[1].toInt(&ok);
+            if (!ok) {
+                QMessageBox::warning(0, "Erreur", "Erreur lors du parcours du fichier à la ligne "
+                                 + line + ", date invalide (reçue : " + lineContent[1] + ").");
+            }
+            initialTime = instant;
+        }
+    }
 
     while(!line.isNull()) {
 
@@ -93,6 +115,8 @@ void Reader::doWorkOffline() {
         }
 
         lineContent = line.split(' ');
+        std::cout << "Lecture de la ligne " << line.toStdString() << std::endl;
+        std::cout << "Temps ecoule : " << timer.elapsed() << std::endl;
 
         if (lineContent[0] == "d") {
             instant = lineContent[1].toInt(&ok);
@@ -100,14 +124,14 @@ void Reader::doWorkOffline() {
                 QMessageBox::warning(0, "Erreur", "Erreur lors du parcours du fichier à la ligne "
                                      + line + ", date invalide (reçue : " + lineContent[1] + ").");
             }
-            dummy.setNum(timer.elapsed());
+            dummy.setNum(timer.elapsed() + initialTime);
             if (instant + totalPauseDuration > timer.elapsed() + endOfLastPause) {
                 // We have to wait
 #ifdef _WIN32
-                Sleep((instant + totalPauseDuration - timer.elapsed() - endOfLastPause));
+                Sleep((instant + totalPauseDuration - timer.elapsed() - initialTime - endOfLastPause));
 #endif
 #ifdef linux
-                usleep((instant + totalPauseDuration - timer.elapsed() - endOfLastPause)*1000);
+                usleep((instant + totalPauseDuration - timer.elapsed() - initialTime - endOfLastPause)*1000);
 #endif
             }
             continue;
@@ -152,7 +176,7 @@ void Reader::doWorkOffline() {
             return;
         }
 
-        emit sendPoint(val1 - 1, val2 - 1, val3);
+        emit sendPoint(val1, val2, val3);
     }
 
     mutex.lock();
