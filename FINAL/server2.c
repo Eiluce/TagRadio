@@ -53,7 +53,6 @@ int main(int arc, char**argv) {
 	strcpy(sensor.custom_name, "SENSOR TAG");
 
 	hci_socket = open_hci_socket(&controllerAdd);
-	fprintf(stderr, "!!!!!!!!!!! %i !!!!!!!!!!!\n", hci_socket.sock);
 	hci_LE_clear_white_list(&hci_socket);
 	hci_LE_add_white_list(&hci_socket, sensor); 
 
