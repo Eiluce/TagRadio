@@ -60,7 +60,7 @@ int main(int arc, char**argv) {
 	// Création et lancement du serveur :
 	l2cap_server_t server;
 	l2cap_server_create(&server, &controllerAdd, 0x1001, 1, 500, &treat_buffer_default_func, &send_response_default_func);
-	l2cap_server_launch(&server, -1, 100); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
+	l2cap_server_launch(&server, -1, 1000); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
 	l2cap_server_close(&server);
 
 	close_all_hci_sockets();

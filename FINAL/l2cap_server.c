@@ -157,7 +157,7 @@ static void *socket_thread_routine(void *data) {
 		}
 		if (bytes_read == 0) {
 			fprintf(stderr, "l2cap_server warning : nothing to read on the socket.\n");
-			continue;
+			goto end;
 		}
 		num_req++;
 		if (strcmp(routine_data->server.clients[i].buffer, "CLOSE") == 0) {

@@ -788,6 +788,7 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 		// last parameter is timeout (for reaching the controler) 0 = infinity.
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_parameters");
+		pthread_mutex_unlock(&hci_controller_mutex);
 		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
@@ -798,6 +799,7 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 	if (hci_le_set_scan_enable(hci_socket->sock, 0x01, 0x00, 2*DEFAULT_TIMEOUT) < 0) { // Duplicate filtering ? (cf p1069)
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_enable");
+		pthread_mutex_unlock(&hci_controller_mutex);	
 		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
@@ -918,7 +920,7 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 						fprintf(file, "%i\n", *rssi);
 					}
 					char rssi_string_val[5] = {0};
-					sprintf(rssi_string_val, "%i ;", *rssi);
+					sprintf(rssi_string_val, "%i;", *rssi);
 					strcat(res, rssi_string_val);
 					k++;
 				}
@@ -943,15 +945,14 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, int8_t *file_descriptor,
 	if (hci_le_set_scan_enable(hci_socket->sock, 0x00, 0x00, 2*DEFAULT_TIMEOUT) < 0) {
 		fprintf(stderr, " [ERROR] \n");
 		perror("set_scan_disable");
+		pthread_mutex_unlock(&hci_controller_mutex);
 		goto end;
 	}
 	fprintf(stderr, " [DONE]\n"); 
 	pthread_mutex_unlock(&hci_controller_mutex);
 
  end :
-	if (pthread_mutex_trylock(&hci_controller_mutex) == 0) {
-		pthread_mutex_unlock(&hci_controller_mutex);
-	}
+	
 	if (new_socket) {
 		close_hci_socket(hci_socket);
 		free(hci_socket);

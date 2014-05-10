@@ -4,13 +4,15 @@
 #include "matrice.h"
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/unistd.h>
 #include <sys/poll.h>
 #include <pthread.h>
+#include <time.h>
 
-#define NB_LIGNES 7
-#define NB_COLONNES 7
+#define NB_LIGNES 6
+#define NB_COLONNES 6
 
 #define CLIENT_GET_RSSI 1
 #define CLIENT_CLOSE_CONNECTION 2
@@ -28,6 +30,8 @@ static bdaddr_t server2Add;
 static bdaddr_t server3Add;
 
 static pthread_mutex_t mutexMatrice;
+
+char * mesures[4] = {0};
 
 struct routine_data_t {
 	int16_t timeout;
@@ -89,16 +93,55 @@ static void *get_rssi_thread_routine(void *data) {
 			insertVal(matrice, i, j, 3, rssi_values);
 			pthread_mutex_unlock(&mutexMatrice);
 		}
+		free(rssi_values);
+
 	}
 
 	pthread_exit((void *)0);
-
 }
+
+static void *get_rssi_thread_routine_mesures(void *data) {
+	struct routine_data_t *routine_data = (struct routine_data_t *)data;
+
+	uint8_t i = routine_data->num_row;
+	uint8_t j = routine_data->num_col;
+	uint8_t num_captor = routine_data->num_captor;
+	int16_t timeout = routine_data->timeout;
+	hci_socket_t *hci_socket = routine_data->hci_socket; 
+	bt_device_t sensor = routine_data->sensor;
+	struct Matrice *matrice = routine_data->matrice;
+	l2cap_client_t *client = routine_data->client;
+
+	if (client) {
+		l2cap_client_send(client, 4000, CLIENT_GET_RSSI);
+		if (client->buffer) { 
+			mesures[num_captor] = client->buffer;
+		}
+	} else {
+		char * rssi_values;
+		rssi_values = hci_LE_get_RSSI(hci_socket, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		fprintf(stderr, "%s\n", rssi_values);
+		if (rssi_values) {
+			memset(mesures[num_captor], 0, strlen(mesures[num_captor]));
+			strcpy(mesures[num_captor], rssi_values);
+		}
+		free(rssi_values);
+	}
+	
+	
+	pthread_exit((void *)0);
+}
+
 
 int main(int arc, char**argv) {
 
+	
 	struct Matrice *matrice = CreateMatrice(NB_LIGNES,NB_COLONNES);
 	pthread_mutex_init(&mutexMatrice, NULL);
+
+	for (uint8_t i = 0; i <4; i++) {
+		mesures[i] = calloc(200, sizeof(char));
+	}
 
 	str2ba(btControllerAdd, &controllerAdd); 
 	str2ba(server1, &server1Add); 
@@ -158,6 +201,24 @@ int main(int arc, char**argv) {
 				pthread_join(clients_threads[k], NULL);
 			}
 		}
+	}
+
+	timeReference = time(NULL);
+	fprintf(stderr,"----Prise de mesures----\n");
+
+	while (1) {
+		for (uint8_t k = 0; k < 4; k++) {
+				pthread_create(&(clients_threads[k]), NULL, 
+					       &(get_rssi_thread_routine_mesures),
+					       (void *)&routine_data[k]);
+		}
+		for (uint8_t k = 0; k < 4; k ++) {
+			pthread_join(clients_threads[k], NULL);
+		}
+		generateDataFromMesures(matrice,"test",
+        mesures[0], mesures[1], mesures[2], mesures[3]);
+        fprintf(stderr, "----Matrice générée----\n");
+
 	}
 
 	// Fermeture des clients :

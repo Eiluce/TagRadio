@@ -59,14 +59,13 @@ int main(int arc, char**argv) {
 	bt_device_display(controller);
 
 	hci_socket = open_hci_socket(&(controller.mac));
-	fprintf(stderr, "!!!!!!!!!!! %i !!!!!!!!!!!\n", hci_socket.sock);
 	hci_LE_clear_white_list(&hci_socket);
 	hci_LE_add_white_list(&hci_socket, sensor); 
 
 	// Création et lancement du serveur :
 	l2cap_server_t server;
 	l2cap_server_create(&server, &(controller.mac), 0x1001, 1, 500, &treat_buffer_default_func, &send_response_default_func);
-	l2cap_server_launch(&server, -1, 100); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
+	l2cap_server_launch(&server, -1, 1000); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
 	l2cap_server_close(&server);
 
 	close_all_hci_sockets();

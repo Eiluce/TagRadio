@@ -23,7 +23,7 @@ Get bluetooth
 ---------------
 At first, get all the packages
 
-	sudo apt-get install bluetooth bluez bluez-utils blueman
+	sudo apt-get install bluetooth bluez bluez-utils blueman libbluetooth-dev
 
 	sudo apt-get install libusb-dev libdbus-1-dev libglib2.0-dev
 
