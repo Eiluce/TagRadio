@@ -149,13 +149,13 @@ void MainWindow::sendPointProbValues() {
 
 void MainWindow::setPointProb(int posX, int posY, double prob){
 
-    if (posX > numberOfColumns) {
-        QMessageBox::warning(this, "Erreur", "L'abscisse entrée est trop grande.");
+    if (posX > numberOfColumns || posX < 0) {
+        QMessageBox::warning(this, "Erreur", "L'abscisse entrée est hors de la grille.");
         return;
     }
 
-    if (posY > numberOfRows) {
-        QMessageBox::warning(this, "Erreur", "L'ordonnée entrée est trop grande.");
+    if (posY > numberOfRows || posY < 0) {
+        QMessageBox::warning(this, "Erreur", "L'ordonnée entrée est hors de la grille.");
         return;
     }
 
