@@ -10,11 +10,12 @@ class BluetoothBox : public QWidget
 {
     Q_OBJECT
 public:
-    explicit BluetoothBox(Reader *read,QWidget *parent = 0);
+    explicit BluetoothBox(Reader *read, QWidget *parent = 0);
 
 signals:
 
 public slots:
+    void closeReader();
 
 private:
     QPushButton *p_ok;

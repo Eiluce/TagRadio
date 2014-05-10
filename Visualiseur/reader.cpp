@@ -48,6 +48,27 @@ void Reader::doWorkOffline() {
     int endOfLastPause = 0;
     int totalPauseDuration = 0;
 
+    line = textStream.readLine();
+    lineNumber++;
+
+    if (line.isNull()) {
+        emit finished();
+        return;
+    }
+
+    if (!line.isEmpty()) {
+
+        lineContent = line.split(' ');
+        if (lineContent[0] == "d") {
+            instant = lineContent[1].toInt(&ok);
+            if (!ok) {
+                QMessageBox::warning(0, "Erreur", "Erreur lors du parcours du fichier à la ligne "
+                                 + line + ", date invalide (reçue : " + lineContent[1] + ").");
+            }
+            timer.addMSecs(instant);
+        }
+    }
+
     while(!line.isNull()) {
 
         mutex.lock();
