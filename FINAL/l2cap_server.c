@@ -1,4 +1,5 @@
 #include "l2cap_server.h"
+#include "trace.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -42,17 +43,17 @@ int8_t l2cap_server_create(l2cap_server_t *server, bdaddr_t *adapter, uint16_t p
 	
 
 	if (!server) {
-		fprintf(stderr, "l2cap_server_create error : invalid server reference.\n");
+		print_trace(TRACE_ERROR, "l2cap_server_create : invalid server reference.\n");
 		return -1;
 	}
 
 	if (!adapter) {
-		fprintf(stderr, "l2cap_server_create error : invalid BT adapter reference.\n");
+		print_trace(TRACE_ERROR, "l2cap_server_create : invalid BT adapter reference.\n");
 		return -1;
 	}
 
 	if (!buffer_length) {
-		fprintf(stderr, "l2cap_server_create warning : null buffer, creation aborted.\n");
+		print_trace(TRACE_WARNING, "l2cap_server_create : null buffer, creation aborted.\n");
 		return -1;
 	}
 
@@ -94,10 +95,12 @@ static void *socket_thread_routine(void *data) {
 	int8_t sock = routine_data->server.clients[i].server_sock.sock;
 	int16_t timeout = routine_data->timeout;
 	char thread_launched = 0;
+	char debug[100] = {0};
 
 	if (sock >= 0) {
 		listen(sock, 1);
-		fprintf(stderr, "Connexion en attente sur la socket %i...\n", sock);
+		sprintf(debug, "Connexion en attente sur la socket %i...\n", sock);
+		print_trace(TRACE_INFO, debug);
 
 		// Maintenant que la socket est en attente de connexion, on va vérifier l'arrivée de connexions éventuelles et les accepter.
 		struct pollfd p;
@@ -119,9 +122,11 @@ static void *socket_thread_routine(void *data) {
 		routine_data->server.clients[i].conn_id = accept(sock,
 								 (struct sockaddr *)&(routine_data->server.clients[i].rem_addr),
 								 &sockaddr_len);
-		fprintf(stderr, "Connexion établie sur la socket %i, id de connexion : %i...\n", sock, routine_data->server.clients[i].conn_id);
+		memset(debug, 0, strlen(debug));
+		sprintf(debug, "Connexion établie sur la socket %i, id de connexion : %i...\n", sock, routine_data->server.clients[i].conn_id);
+		print_trace(TRACE_INFO, debug);
 	} else {
-		fprintf(stderr, "server_launch_socket_routine error : invalid socket.\n");
+		print_trace(TRACE_ERROR, "server_launch_socket_routine : invalid socket.\n");
 		return NULL;
 	}
 	thread_launched = 1;
@@ -155,8 +160,8 @@ static void *socket_thread_routine(void *data) {
 			perror("server_routine : error while reading socket.\n");
 			goto end;
 		}
-		if (bytes_read == 0) {
-			fprintf(stderr, "l2cap_server warning : nothing to read on the socket.\n");
+		if (bytes_read == 0) { // 0 Bytes read means that the connection has been lost.
+			print_trace(TRACE_WARNING, "l2cap_server : nothing to read on the socket.\n");
 			goto end;
 		}
 		num_req++;
@@ -178,12 +183,12 @@ static void *socket_thread_routine(void *data) {
 
 int8_t l2cap_server_launch(l2cap_server_t *server, int16_t timeout, uint16_t max_req) {
 	if (server == NULL) {
-		fprintf(stderr, "l2cap_server_launch error : invalid server reference.\n");
+		print_trace(TRACE_ERROR, "l2cap_server_launch : invalid server reference.\n");
 		return -1;
 	}
 
 	if (server->max_clients == 0) {
-		fprintf(stderr, "l2cap_server_launch error : no socket available to run the server.\n");
+		print_trace(TRACE_ERROR, "l2cap_server_launch : no socket available to run the server.\n");
 		return -1;
 	}
 

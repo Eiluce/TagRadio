@@ -1,4 +1,5 @@
 #include "l2cap_client.h"
+#include "trace.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,13 +12,13 @@
 
 
 static void treat_buffer_default_func(l2cap_client_t client) {
-	fprintf(stderr, "Buffer trace : %s\n", client.buffer);
+	fprintf(stdout, "Buffer trace : %s\n", client.buffer);
 	return;
 }
 
 static void send_request_default_func(l2cap_client_t client, uint8_t req_type) {
 	if (client.l2cap_socket.sock < 0) {
-		fprintf(stderr, "client_send_request error : invalid socket descriptor.\n");
+		print_trace(TRACE_ERROR, "client_send_request : invalid socket descriptor.\n");
 		return;
 	}
 	char request[] = "Request echo.";
@@ -33,19 +34,19 @@ int8_t l2cap_client_create(l2cap_client_t *client, bdaddr_t *server_add, uint16_
 			   void (*send_request_func)(l2cap_client_t client, uint8_t req_type)) {
 	
 	if (!client) {
-		fprintf(stderr, "l2cap_client_create error : invalid client reference.\n");
+		print_trace(TRACE_ERROR, "l2cap_client_create : invalid client reference.\n");
 		return -1;
 	}
 
 	if (!buffer_length) {
-		fprintf(stderr, "l2cap_client_create warning : null buffer, creation aborted.\n");
+		print_trace(TRACE_WARNING, "l2cap_client_create : null buffer, creation aborted.\n");
 		return -1;
 	}
 	
 	client->connected = 0;
 	client->l2cap_socket = open_l2cap_socket(server_add, port, 0);
 	if (client->l2cap_socket.sock < 0) {
-		fprintf(stderr, "l2cap_client_create error : cannot open socket.\n");
+		print_trace(TRACE_ERROR, "l2cap_client_create : cannot open socket.\n");
 		return -1;
 	}
 	client->buffer = calloc(buffer_length, sizeof(char));
@@ -86,7 +87,7 @@ int8_t l2cap_client_connect(l2cap_client_t *client) {
 
 int8_t l2cap_client_send(l2cap_client_t *client, int16_t timeout, uint8_t req_type) {
 	if (!client) {
-		fprintf(stderr, "l2cap_client_send error ; invalid client.\n");
+		print_trace(TRACE_ERROR, "l2cap_client_send : invalid client.\n");
 		return -1;
 	}
 	if (client->connected) {
@@ -121,7 +122,7 @@ int8_t l2cap_client_send(l2cap_client_t *client, int16_t timeout, uint8_t req_ty
 		}
 		client->treat_buffer(*client);
 	} else {
-		fprintf(stderr, "l2cap_client_send : error : invalid connexion.\n");
+		print_trace(TRACE_ERROR, "l2cap_client_send : invalid connexion.\n");
 		return -1;
 	}
 

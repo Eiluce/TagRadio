@@ -1,5 +1,5 @@
 #include "l2cap_client.h"
-#include "hci_controler.h"
+#include "hci_controller.h"
 #include "hci_socket.h"
 #include "matrice.h"
 #include <errno.h>
@@ -11,23 +11,22 @@
 #include <pthread.h>
 #include <time.h>
 
-#define NB_LIGNES 6
-#define NB_COLONNES 6
+#define NB_LIGNES 7
+#define NB_COLONNES 7
 
 #define CLIENT_GET_RSSI 1
 #define CLIENT_CLOSE_CONNECTION 2
 
-// METTRE BT_DEVICES PARTOUT ?
 static const char sensorAdd[18] = "1C:BA:8C:20:E9:1E";
 static const char btControllerAdd[18] = "00:1A:7D:DA:71:0D"; //Pearl
-static const char server1[18] = "00:02:72:CD:29:60"; // Belkin 1
-static const char server2[18] = "00:02:72:CD:29:66"; // Belkin 2
-static const char server3[18] = "00:02:72:CD:29:67"; // Belkin 3
+static const char server1Add[18] = "00:02:72:CD:29:60"; // Belkin 1
+static const char server2Add[18] = "00:02:72:CD:29:66"; // Belkin 2
+static const char server3Add[18] = "00:02:72:CD:29:67"; // Belkin 3
 
-static bdaddr_t controllerAdd;
-static bdaddr_t server1Add;
-static bdaddr_t server2Add;
-static bdaddr_t server3Add;
+static bt_device_t server1;
+static bt_device_t server2;
+static bt_device_t server3;
+static bt_device_t sensor;
 
 static pthread_mutex_t mutexMatrice;
 
@@ -35,7 +34,7 @@ char * mesures[4] = {0};
 
 struct routine_data_t {
 	int16_t timeout;
-	hci_socket_t *hci_socket;
+	hci_controller_t *hci_controller;
 	bt_device_t sensor;
 	l2cap_client_t *client;
 	uint8_t num_captor;
@@ -72,13 +71,13 @@ static void *get_rssi_thread_routine(void *data) {
 	uint8_t j = routine_data->num_col;
 	uint8_t num_captor = routine_data->num_captor;
 	int16_t timeout = routine_data->timeout;
-	hci_socket_t *hci_socket = routine_data->hci_socket; 
+	hci_controller_t *hci_controller = routine_data->hci_controller; 
 	bt_device_t sensor = routine_data->sensor;
 	struct Matrice *matrice = routine_data->matrice;
 	l2cap_client_t *client = routine_data->client;
 
 	if (client) {
-		l2cap_client_send(client, 4000, CLIENT_GET_RSSI);
+		l2cap_client_send(client, 8000, CLIENT_GET_RSSI);
 		if (client->buffer) { 
 			pthread_mutex_lock(&mutexMatrice);
 			insertVal(matrice, i,j, num_captor, client->buffer);
@@ -86,7 +85,7 @@ static void *get_rssi_thread_routine(void *data) {
 		}
 	} else {
 		char * rssi_values;
-		rssi_values = hci_LE_get_RSSI(hci_socket, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values) {
 			pthread_mutex_lock(&mutexMatrice);
@@ -107,19 +106,19 @@ static void *get_rssi_thread_routine_mesures(void *data) {
 	uint8_t j = routine_data->num_col;
 	uint8_t num_captor = routine_data->num_captor;
 	int16_t timeout = routine_data->timeout;
-	hci_socket_t *hci_socket = routine_data->hci_socket; 
+	hci_controller_t *hci_controller = routine_data->hci_controller; 
 	bt_device_t sensor = routine_data->sensor;
 	struct Matrice *matrice = routine_data->matrice;
 	l2cap_client_t *client = routine_data->client;
 
 	if (client) {
-		l2cap_client_send(client, 4000, CLIENT_GET_RSSI);
+		l2cap_client_send(client, 8000, CLIENT_GET_RSSI);
 		if (client->buffer) { 
 			mesures[num_captor] = client->buffer;
 		}
 	} else {
 		char * rssi_values;
-		rssi_values = hci_LE_get_RSSI(hci_socket, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values) {
 			memset(mesures[num_captor], 0, strlen(mesures[num_captor]));
@@ -143,43 +142,52 @@ int main(int arc, char**argv) {
 		mesures[i] = calloc(200, sizeof(char));
 	}
 
+	bdaddr_t controllerAdd, server1Mac, server2Mac, server3Mac, sensorMac;
 	str2ba(btControllerAdd, &controllerAdd); 
-	str2ba(server1, &server1Add); 
-	str2ba(server2, &server2Add); 
-	str2ba(server3, &server3Add); 
+	str2ba(server1Add, &server1Mac); 
+	str2ba(server2Add, &server2Mac); 
+	str2ba(server3Add, &server3Mac); 
+	str2ba(sensorAdd, &sensorMac);
 
-	bt_device_t sensor;
-	str2ba(sensorAdd, &(sensor.mac));
-	sensor.add_type = PUBLIC_DEVICE_ADDRESS;
-	strcpy(sensor.custom_name, "SENSOR TAG");
-	
-	hci_socket_t hci_socket = open_hci_socket(&controllerAdd);
-	hci_LE_clear_white_list(&hci_socket);
-	hci_LE_add_white_list(&hci_socket, sensor);
+	hci_controller_t hci_controller = hci_open_controller(&controllerAdd, "MAIN_SERVER");
+	sensor = bt_device_create(sensorMac, PUBLIC_DEVICE_ADDRESS, NULL, "SENSOR_TAG");
+	server1 = bt_device_create(server1Mac, PUBLIC_DEVICE_ADDRESS, NULL, "SERVER_1");
+	server2 = bt_device_create(server2Mac, PUBLIC_DEVICE_ADDRESS, NULL, "SERVER_2");
+	server3 = bt_device_create(server3Mac, PUBLIC_DEVICE_ADDRESS, NULL, "SERVER_3");
+
+	hci_LE_clear_white_list(NULL, &hci_controller);
+	hci_LE_add_white_list(NULL, &hci_controller, sensor);
 	
 	// Création des trois clients :
 	l2cap_client_t clients[3] = {0};
-	l2cap_client_create(&clients[0], &server1Add, 0x1001, 500, NULL, &(send_req_func));
-	l2cap_client_create(&clients[1], &server2Add, 0x1001, 500, NULL, &(send_req_func)); 
-	l2cap_client_create(&clients[2], &server3Add, 0x1001, 500, NULL, &(send_req_func));
+	l2cap_client_create(&clients[0], &server1Mac, 0x1001, 500, NULL, &(send_req_func));
+	l2cap_client_create(&clients[1], &server2Mac, 0x1001, 500, NULL, &(send_req_func)); 
+	l2cap_client_create(&clients[2], &server3Mac, 0x1001, 500, NULL, &(send_req_func));
 
 
 	if (l2cap_client_connect(&clients[0]) != 0) {	
 		perror("client_connect : unable to connect client 1");
+		return EXIT_FAILURE;
 	}
 	if (l2cap_client_connect(&clients[1]) != 0) {	
 		perror("client_connect : unable to connect client 2");
+		return EXIT_FAILURE;
 	}
 	if (l2cap_client_connect(&clients[2]) != 0) {	
 		perror("client_connect : unable to connect client 3");
+		return EXIT_FAILURE;
 	}
+
+	fprintf(stderr, "\n-------------------\n");
+	fprintf(stderr, "----Calibration----\n");
+	fprintf(stderr, "-------------------\n");
 
 	pthread_t clients_threads[4];
 	struct routine_data_t routine_data[4];
 	for (uint8_t k = 0; k < 4; k++) {
 		routine_data[k].timeout = 4500;
 		routine_data[k].num_captor = k;
-		routine_data[k].hci_socket = &hci_socket;
+		routine_data[k].hci_controller = &hci_controller;
 		routine_data[k].sensor = sensor;
 		if (k < 3) {
 			routine_data[k].client = &(clients[k]);
@@ -204,20 +212,24 @@ int main(int arc, char**argv) {
 	}
 
 	timeReference = time(NULL);
-	fprintf(stderr,"----Prise de mesures----\n");
 
-	while (1) {
+	fprintf(stderr,"\n------------------------\n");
+	fprintf(stderr,"----Prise de mesures----\n");
+	fprintf(stderr,"------------------------\n");
+
+	//	while (1) {
+	for (uint16_t tutu = 0; tutu < 100; tutu++) {
 		for (uint8_t k = 0; k < 4; k++) {
-				pthread_create(&(clients_threads[k]), NULL, 
-					       &(get_rssi_thread_routine_mesures),
-					       (void *)&routine_data[k]);
+			pthread_create(&(clients_threads[k]), NULL, 
+				       &(get_rssi_thread_routine_mesures),
+				       (void *)&routine_data[k]);
 		}
 		for (uint8_t k = 0; k < 4; k ++) {
 			pthread_join(clients_threads[k], NULL);
 		}
 		generateDataFromMesures(matrice,"test",
-        mesures[0], mesures[1], mesures[2], mesures[3]);
-        fprintf(stderr, "----Matrice générée----\n");
+					mesures[0], mesures[1], mesures[2], mesures[3]);
+		fprintf(stderr, "----Matrice générée----\n");
 
 	}
 
@@ -234,5 +246,9 @@ int main(int arc, char**argv) {
 
 	afficherMatrice(matrice);
 	pthread_mutex_destroy(&mutexMatrice);
+
+	hci_close_controller(&hci_controller);
+	display_hci_socket_list(hci_controller.sockets_list);
+	bt_destroy_device_table();
 
 } 

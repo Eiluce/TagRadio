@@ -1,5 +1,5 @@
 #include "l2cap_server.h"
-#include "hci_controler.h"
+#include "hci_controller.h"
 #include "hci_socket.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,8 +10,9 @@
 static char sensorAdd[18] = "1C:BA:8C:20:E9:1E";
 static char btControllerAdd[18] = "00:02:72:CD:29:66"; //Belkin 2
 static bdaddr_t controllerAdd;
+
 static bt_device_t sensor;
-static hci_socket_t hci_socket; // PEUT ETRE STOCKÉE EN GLOBALE CAR ON A QU'UN SEUL CLIENT.
+static hci_controller_t hci_controller; // Peut être stocké en local car on a qu'UN SEUL client.
 
 static void treat_buffer_default_func(l2cap_server_t server, uint8_t num_client) {
 	fprintf(stderr, "Buffer trace : %s\n", server.clients[num_client].buffer);
@@ -29,7 +30,7 @@ static void send_response_default_func(l2cap_server_t server, uint8_t num_client
 
 	switch(res_type) {
 	case SERVER_SEND_RSSI:		
-		rssi_values = hci_LE_get_RSSI(&hci_socket, fd, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, &hci_controller, fd, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
 		if (rssi_values) {
 			if (write(server.clients[i].conn_id, rssi_values, strlen(rssi_values)) != strlen(rssi_values)) {
 				fprintf(stderr, "server_send_response warning : an error occured when sending response to client.\n");
@@ -47,20 +48,26 @@ static void send_response_default_func(l2cap_server_t server, uint8_t num_client
 int main(int arc, char**argv) {
 
 	// Mise en place des paramètres globaux :
+	bdaddr_t sensorMac;
 	str2ba(btControllerAdd, &controllerAdd); 
-	str2ba(sensorAdd, &(sensor.mac));
-	sensor.add_type = PUBLIC_DEVICE_ADDRESS;
-	strcpy(sensor.custom_name, "SENSOR TAG");
+	str2ba(sensorAdd, &sensorMac);
 
-	hci_socket = open_hci_socket(&controllerAdd);
-	hci_LE_clear_white_list(&hci_socket);
-	hci_LE_add_white_list(&hci_socket, sensor); 
+	hci_controller = hci_open_controller(&controllerAdd, "SERVER_2");
+	sensor = bt_device_create(sensorMac, PUBLIC_DEVICE_ADDRESS, NULL, "SENSOR_TAG");
+
+	bt_device_display(hci_controller.device);
+	display_hci_socket_list(hci_controller.sockets_list);
+
+	hci_LE_clear_white_list(NULL, &hci_controller);
+	hci_LE_add_white_list(NULL, &hci_controller, sensor); 
 
 	// Création et lancement du serveur :
 	l2cap_server_t server;
 	l2cap_server_create(&server, &controllerAdd, 0x1001, 1, 500, &treat_buffer_default_func, &send_response_default_func);
-	l2cap_server_launch(&server, -1, 1000); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
+	l2cap_server_launch(&server, -1, 2000); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
 	l2cap_server_close(&server);
 
-	close_all_hci_sockets();
+	hci_close_controller(&hci_controller);
+	display_hci_socket_list(hci_controller.sockets_list);
+	bt_destroy_device_table();
 } 

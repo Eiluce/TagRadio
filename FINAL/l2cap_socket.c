@@ -1,4 +1,5 @@
 #include "l2cap_socket.h"
+#include "trace.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -44,7 +45,7 @@ l2cap_socket_t open_l2cap_socket(bdaddr_t *adapter, uint16_t port, char to_bind)
 
 void close_l2cap_socket(l2cap_socket_t *l2cap_socket) {
 	if (l2cap_socket->sock < 0) {
-		fprintf(stderr, "close_l2cap_socket warning : already closed socket.\n");
+		print_trace(TRACE_WARNING, "close_l2cap_socket : already closed socket.\n");
 		return;
 	}
 	close(l2cap_socket->sock);
@@ -53,7 +54,7 @@ void close_l2cap_socket(l2cap_socket_t *l2cap_socket) {
 						  sizeof(l2cap_socket_t));
 	l2cap_socket->sock = -1;
 	if (listed_socket == NULL) {
-		fprintf(stderr, "close_l2cap_scoket warning : this socket wasn't referenced yet.\n");
+		print_trace(TRACE_WARNING, "close_l2cap_scoket : this socket wasn't referenced yet.\n");
 		return;
 	}
 	free(listed_socket);
@@ -70,7 +71,7 @@ list_t *get_l2cap_socket_list(void) {
 
 void close_all_l2cap_sockets(void) {
 	if (l2cap_socket_list == NULL) {
-		fprintf(stderr, "close_all_l2cap_sockets error : no socket to close.\n");
+		print_trace(TRACE_ERROR, "close_all_l2cap_sockets : no socket to close.\n");
 		return;
 	}
        
