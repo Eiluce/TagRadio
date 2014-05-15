@@ -3,12 +3,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-/*
-#include <sys/socket.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
- */
-
 #include "matrice.h"
 
 /**

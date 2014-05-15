@@ -2,6 +2,7 @@
 #include "hci_controller.h"
 #include "hci_socket.h"
 #include "matrice.h"
+#include "simulation_data.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,9 +11,6 @@
 #include <sys/poll.h>
 #include <pthread.h>
 #include <time.h>
-
-#define NB_LIGNES 7
-#define NB_COLONNES 7
 
 #define CLIENT_GET_RSSI 1
 #define CLIENT_CLOSE_CONNECTION 2
@@ -85,11 +83,11 @@ static void *get_rssi_thread_routine(void *data) {
 		}
 	} else {
 		char * rssi_values;
-		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, NUM_MEASURES, 0x00, SCAN_INTERVAL, SCAN_WINDOW, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values) {
 			pthread_mutex_lock(&mutexMatrice);
-			insertVal(matrice, i, j, 3, rssi_values);
+			insertVal(matrice, i, j, NUM_CAPTORS-1, rssi_values);
 			pthread_mutex_unlock(&mutexMatrice);
 		}
 		free(rssi_values);
@@ -118,7 +116,7 @@ static void *get_rssi_thread_routine_mesures(void *data) {
 		}
 	} else {
 		char * rssi_values;
-		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, NUM_MEASURES, 0x00, SCAN_INTERVAL, SCAN_WINDOW, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values) {
 			memset(mesures[num_captor], 0, strlen(mesures[num_captor]));
@@ -159,7 +157,7 @@ int main(int arc, char**argv) {
 	hci_LE_add_white_list(NULL, &hci_controller, sensor);
 	
 	// Création des trois clients :
-	l2cap_client_t clients[3] = {0};
+	l2cap_client_t clients[NUM_CAPTORS-1] = {0};
 	l2cap_client_create(&clients[0], &server1Mac, 0x1001, 500, NULL, &(send_req_func));
 	l2cap_client_create(&clients[1], &server2Mac, 0x1001, 500, NULL, &(send_req_func)); 
 	l2cap_client_create(&clients[2], &server3Mac, 0x1001, 500, NULL, &(send_req_func));
@@ -182,14 +180,14 @@ int main(int arc, char**argv) {
 	fprintf(stderr, "----Calibration----\n");
 	fprintf(stderr, "-------------------\n");
 
-	pthread_t clients_threads[4];
-	struct routine_data_t routine_data[4];
-	for (uint8_t k = 0; k < 4; k++) {
+	pthread_t clients_threads[NUM_CAPTORS];
+	struct routine_data_t routine_data[NUM_CAPTORS];
+	for (uint8_t k = 0; k < NUM_CAPTORS; k++) {
 		routine_data[k].timeout = 4500;
 		routine_data[k].num_captor = k;
 		routine_data[k].hci_controller = &hci_controller;
 		routine_data[k].sensor = sensor;
-		if (k < 3) {
+		if (k < NUM_CAPTORS-1) {
 			routine_data[k].client = &(clients[k]);
 		} else {
 			routine_data[k].client = NULL;
@@ -198,7 +196,7 @@ int main(int arc, char**argv) {
 	}
 	for (uint8_t i = 0; i < NB_LIGNES; i++) {
 		for (uint8_t j = 0; j < NB_COLONNES; j++) {
-			for (uint8_t k = 0; k < 4; k++) {
+			for (uint8_t k = 0; k < NUM_CAPTORS; k++) {
 				routine_data[k].num_row = i;
 				routine_data[k].num_col = j;
 				pthread_create(&(clients_threads[k]), NULL, 
@@ -219,12 +217,12 @@ int main(int arc, char**argv) {
 
 	//	while (1) {
 	for (uint16_t tutu = 0; tutu < 100; tutu++) {
-		for (uint8_t k = 0; k < 4; k++) {
+		for (uint8_t k = 0; k < NUM_CAPTORS; k++) {
 			pthread_create(&(clients_threads[k]), NULL, 
 				       &(get_rssi_thread_routine_mesures),
 				       (void *)&routine_data[k]);
 		}
-		for (uint8_t k = 0; k < 4; k ++) {
+		for (uint8_t k = 0; k < NUM_CAPTORS; k ++) {
 			pthread_join(clients_threads[k], NULL);
 		}
 		generateDataFromMesures(matrice,"test",
