@@ -1,6 +1,7 @@
 #include "l2cap_server.h"
 #include "hci_controller.h"
 #include "hci_socket.h"
+#include "simulation_data.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -30,7 +31,7 @@ static void send_response_default_func(l2cap_server_t server, uint8_t num_client
 
 	switch(res_type) {
 	case SERVER_SEND_RSSI:		
-		rssi_values = hci_LE_get_RSSI(NULL, &hci_controller, fd, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, &hci_controller, fd, NULL, NUM_MEASURES, 0x00, SCAN_INTERVAL, SCAN_WINDOW, 0x00, 0x01);
 		if (rssi_values) {
 			if (write(server.clients[i].conn_id, rssi_values, strlen(rssi_values)) != strlen(rssi_values)) {
 				fprintf(stderr, "server_send_response warning : an error occured when sending response to client.\n");
@@ -63,8 +64,11 @@ int main(int arc, char**argv) {
 
 	// Création et lancement du serveur :
 	l2cap_server_t server;
+	
 	l2cap_server_create(&server, &controllerAdd, 0x1001, 1, 500, &treat_buffer_default_func, &send_response_default_func);
-	l2cap_server_launch(&server, -1, 2000); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
+	while (strcmp(server.clients[0].buffer, "CLOSE") != 0) {
+		l2cap_server_launch(&server, -1, 2000); // Timeout de -1 implique qu'on bloquera tant que rien ne se passe.
+	}
 	l2cap_server_close(&server);
 
 	hci_close_controller(&hci_controller);
