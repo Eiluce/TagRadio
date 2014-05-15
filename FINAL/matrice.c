@@ -153,7 +153,7 @@ int* getMesures(char* mesures) {
     while (mesures[i] != '\0') {
         if (mesures[i] == '-') {
             i++;
-            while (mesures[i] != '\0' && mesures[i] != ';') { "-44;-45;-45;-44;"
+            while (mesures[i] != '\0' && mesures[i] != ';') {
                 tmp = tmp * 10 - ((int) mesures[i] - '0');
                 i++;
             }
