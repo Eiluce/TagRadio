@@ -14,6 +14,7 @@ Reader::Reader(QObject *parent) :
 {
     _abort = false;
     _working = false;
+    _step = false;
 
 
 }
@@ -115,8 +116,6 @@ void Reader::doWorkOffline() {
         }
 
         lineContent = line.split(' ');
-        std::cout << "Lecture de la ligne " << line.toStdString() << std::endl;
-        std::cout << "Temps ecoule : " << timer.elapsed() << std::endl;
 
         if (lineContent[0] == "d") {
             instant = lineContent[1].toInt(&ok);
@@ -127,13 +126,20 @@ void Reader::doWorkOffline() {
             dummy.setNum(timer.elapsed() + initialTime);
             if (instant + totalPauseDuration > timer.elapsed() + endOfLastPause) {
                 // We have to wait
+                if (!_step) {
 #ifdef _WIN32
-                Sleep((instant + totalPauseDuration - timer.elapsed() - initialTime - endOfLastPause));
+                    Sleep((instant + totalPauseDuration - timer.elapsed() - initialTime - endOfLastPause));
 #endif
 #ifdef linux
-                usleep((instant + totalPauseDuration - timer.elapsed() - initialTime - endOfLastPause)*1000);
+                    usleep((instant + totalPauseDuration - timer.elapsed() - initialTime - endOfLastPause)*1000);
 #endif
+
+                } else {
+                    this->pauseWork(pauseButton);
+                    _step = false;
+                }
             }
+            emit sendDate(lineContent[1]);
             continue;
         }
 
@@ -212,6 +218,7 @@ void Reader::abort() {
 }
 
 void Reader::pauseWork(QPushButton *pauseButton) {
+    this->pauseButton = pauseButton;
     if (_pause) {
         pauseButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/pause.png"));
         _pause = false;
@@ -228,3 +235,12 @@ void Reader::setFilename(QString file) {
     this->filename = file;
 }
 
+
+void Reader::stepDate(QPushButton *pauseButton) {
+    if (_pause) {
+        _pause = false;
+    }
+    this->pauseButton = pauseButton;
+    _step = true;
+
+}

@@ -1,0 +1,13 @@
+INPUT(
+./release\main.o
+./release\mainwindow.o
+./release\querybox.o
+./release\reader.o
+./release\tablesizebox.o
+./release\bluetoothbox.o
+./release\moc_mainwindow.o
+./release\moc_querybox.o
+./release\moc_reader.o
+./release\moc_tablesizebox.o
+./release\moc_bluetoothbox.o
+);

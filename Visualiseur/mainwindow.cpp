@@ -5,7 +5,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     thread = new QThread();
     reader = new Reader();
-    blueBox = new BluetoothBox(reader);
 
     reader->moveToThread(thread);
     connect(reader, SIGNAL(sendPoint(int,int,double)),
@@ -40,9 +39,6 @@ MainWindow::MainWindow(QWidget *parent) :
     p_changeTableSize = new QPushButton("Changer taille table", this);
     p_changeTableSize->setGeometry(50, 560, 120, 30);
 
-    p_openBluetooth = new QPushButton("Connexion à l'appareil", this);
-    p_openBluetooth->setGeometry(590, 210, 120, 30);
-
     pauseButton = new QPushButton("", this);
     pauseButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/pause.png"));
     pauseButton->setGeometry(590, 250, 30, 30);
@@ -52,6 +48,11 @@ MainWindow::MainWindow(QWidget *parent) :
     stopButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/stop.png"));
     stopButton->setGeometry(630, 250, 30, 30);
     stopButton->setDisabled(true);
+
+    stepButton = new QPushButton("", this);
+    stepButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/step.png"));
+    stepButton->setGeometry(670, 250, 30, 30);
+    stepButton->setDisabled(true);
 
     p_quit = new QPushButton("Quitter", this);
     p_quit->setGeometry(600, 560, 100, 30);
@@ -68,6 +69,9 @@ MainWindow::MainWindow(QWidget *parent) :
     p_addPosY->setPlaceholderText("Ordonnée");
     p_addPosP->setPlaceholderText("Proba");
 
+    currentDate = new QLabel("Pas de fichier en cours", this);
+    currentDate->setGeometry(580, 300, 140, 30);
+
 
     QObject::connect(p_addPosition, SIGNAL(clicked()),
                      this, SLOT(sendPointProbValues()));
@@ -79,14 +83,16 @@ MainWindow::MainWindow(QWidget *parent) :
                      qApp, SLOT(quit()));
     QObject::connect(p_openFile, SIGNAL(clicked()),
                      this, SLOT(readMatrixFromFile()));
-    QObject::connect(p_openBluetooth, SIGNAL(clicked()),
-                     this, SLOT(readMatrixFromConnection()));
     QObject::connect(p_changeTableSize, SIGNAL(clicked()),
                      this, SLOT(changeTableSize()));
     QObject::connect(pauseButton, SIGNAL(clicked()),
                      this, SLOT(pauseRead()));
     QObject::connect(stopButton, SIGNAL(clicked()),
                      this, SLOT(stopRead()));
+    QObject::connect(reader, SIGNAL(sendDate(QString)),
+                     this, SLOT(setDate(QString)));
+    QObject::connect(stepButton, SIGNAL(clicked()),
+                     this, SLOT(clickNextDate()));
 
 
 }
@@ -149,18 +155,21 @@ void MainWindow::sendPointProbValues() {
 
 void MainWindow::setPointProb(int posX, int posY, double prob){
 
-    if (posX > numberOfColumns || posX < 0) {
+    if (posX >= numberOfColumns || posX < 0) {
         QMessageBox::warning(this, "Erreur", "L'abscisse entrée est hors de la grille.");
+        reader->pauseWork(pauseButton);
         return;
     }
 
-    if (posY > numberOfRows || posY < 0) {
+    if (posY >= numberOfRows || posY < 0) {
         QMessageBox::warning(this, "Erreur", "L'ordonnée entrée est hors de la grille.");
+        reader->pauseWork(pauseButton);
         return;
     }
 
     if (prob < 0.0 || prob > 1.0) {
         QMessageBox::warning(this, "Erreur", "La probabilité choisie doit être comprise entre 0 et 1.");
+        reader->pauseWork(pauseButton);
         return;
     }
 
@@ -212,22 +221,16 @@ void MainWindow::readMatrixFromFile() {
     thread->wait();
     reader->setFilename(filename);
     p_openFile->setDisabled(true);
-    p_openBluetooth->setDisabled(true);
     pauseButton->setDisabled(false);
+    stepButton->setDisabled(false);
     stopButton->setDisabled(false);
     reader->requestWork(false);
+    currentDate->setText("Date (en ms) : 0");
 
 }
 
-void MainWindow::readMatrixFromConnection() {
-    reader->abort();
-    thread->wait();
-    blueBox->show();
-    p_openFile->setDisabled(true);
-    p_openBluetooth->setDisabled(true);
-    pauseButton->setDisabled(false);
-    stopButton->setDisabled(false);
-
+void MainWindow::setDate(QString date) {
+    currentDate->setText("Date (en ms) : " + date);
 }
 
 MainWindow::~MainWindow() {
@@ -268,8 +271,11 @@ void MainWindow::stopRead() {
 void MainWindow::fileFinished() {
     pauseButton->setDisabled(true);
     stopButton->setDisabled(true);
+    stepButton->setDisabled(true);
     p_openFile->setDisabled(false);
-    p_openBluetooth->setDisabled(false);
-
+    currentDate->setText("Pas de fichier en cours");
 }
 
+void MainWindow::clickNextDate() {
+    reader->stepDate(pauseButton);
+}
