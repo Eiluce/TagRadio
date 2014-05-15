@@ -3,12 +3,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-/*
-#include <sys/socket.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
- */
-
 #include "matrice.h"
 
 /**
@@ -159,7 +153,7 @@ int* getMesures(char* mesures) {
     while (mesures[i] != '\0') {
         if (mesures[i] == '-') {
             i++;
-            while (mesures[i] != '\0' && mesures[i] != ';') {
+            while (mesures[i] != '\0' && mesures[i] != ';') { "-44;-45;-45;-44;"
                 tmp = tmp * 10 - ((int) mesures[i] - '0');
                 i++;
             }

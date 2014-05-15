@@ -2,6 +2,7 @@
 #include "hci_controller.h"
 #include "hci_socket.h"
 #include "matrice.h"
+#include "simulation_data.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,9 +11,6 @@
 #include <sys/poll.h>
 #include <pthread.h>
 #include <time.h>
-
-#define NB_LIGNES 7
-#define NB_COLONNES 7
 
 #define CLIENT_GET_RSSI 1
 #define CLIENT_CLOSE_CONNECTION 2
@@ -85,7 +83,7 @@ static void *get_rssi_thread_routine(void *data) {
 		}
 	} else {
 		char * rssi_values;
-		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, NUM_MEASURES, 0x00, SCAN_INTERVAL, SCAN_WINDOW, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values) {
 			pthread_mutex_lock(&mutexMatrice);
@@ -118,7 +116,7 @@ static void *get_rssi_thread_routine_mesures(void *data) {
 		}
 	} else {
 		char * rssi_values;
-		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, 4, 0x00, 0x20, 0x10, 0x00, 0x01);
+		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, NUM_MEASURES, 0x00, SCAN_INTERVAL, SCAN_WINDOW, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values) {
 			memset(mesures[num_captor], 0, strlen(mesures[num_captor]));
