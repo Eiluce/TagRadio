@@ -63,9 +63,8 @@ static void send_req_func(l2cap_client_t client, uint8_t req_type) {
 	}
 }
 
-static void *get_rssi_thread_routine_mesures(void *data) {
+static void *get_rssi_thread_routine(void *data) {
 	struct routine_data_t *routine_data = (struct routine_data_t *)data;
-
 	char *status = malloc(sizeof(char));
 	memset(status, 0, sizeof(status));
 
@@ -81,7 +80,9 @@ static void *get_rssi_thread_routine_mesures(void *data) {
 	if (client) {
 		l2cap_client_send(client, 8000, CLIENT_GET_RSSI);
 		if (client->buffer) { 
-			mesures[num_captor] = client->buffer;
+			pthread_mutex_lock(&mutexMatrice);
+			insertVal(matrice, i,j, num_captor, client->buffer);
+			pthread_mutex_unlock(&mutexMatrice);
 		} else {
 			*status = 1;
 		}
@@ -90,32 +91,28 @@ static void *get_rssi_thread_routine_mesures(void *data) {
 		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, NUM_MEASURES, 0x00, SCAN_INTERVAL, SCAN_WINDOW, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values) {
-			memset(mesures[num_captor], 0, strlen(mesures[num_captor]));
-			strcpy(mesures[num_captor], rssi_values);
+			pthread_mutex_lock(&mutexMatrice);
+			insertVal(matrice, i, j, NUM_CAPTORS-1, rssi_values);
+			pthread_mutex_unlock(&mutexMatrice);
 		} else {
 			*status = 1;
 		}
 		free(rssi_values);
+
 	}
-	
-	
+
 	pthread_exit((void *)status);
 }
 
-
 int main(int arc, char**argv) {
 
-	
-	if (arc != 2) {
-		print_trace(TRACE_ERROR, "Veuillez indiquer un fichier contenant la matrice de calibration.\n");
-		return EXIT_FAILURE;
-	}	
 
-	struct Matrice *matrice = ouvrirMatrice(argv[1]);
-	if (!matrice) {
+	if (arc != 2) {
+		print_trace(TRACE_ERROR, "Veuillez indiquer un fichier où stocker la matrice de calibration.\n");
 		return EXIT_FAILURE;
-	}
-	afficherMatrice(matrice);
+	} 
+	
+	struct Matrice *matrice = CreateMatrice(NB_LIGNES,NB_COLONNES, NUM_CAPTORS);
 	pthread_mutex_init(&mutexMatrice, NULL);
 
 	for (uint8_t i = 0; i < NUM_CAPTORS; i++) {
@@ -158,6 +155,10 @@ int main(int arc, char**argv) {
 		return EXIT_FAILURE;
 	}
 
+	fprintf(stderr, "\n-------------------\n");
+	fprintf(stderr, "----Calibration----\n");
+	fprintf(stderr, "-------------------\n");
+
 	pthread_t clients_threads[NUM_CAPTORS];
 	struct routine_data_t routine_data[NUM_CAPTORS];
 	for (uint8_t k = 0; k < NUM_CAPTORS; k++) {
@@ -172,34 +173,30 @@ int main(int arc, char**argv) {
 		}
 		routine_data[k].matrice = matrice;
 	}
-
-	timeReference = time(NULL);
-
-	fprintf(stderr,"\n------------------------\n");
-	fprintf(stderr,"----Prise de mesures----\n");
-	fprintf(stderr,"------------------------\n");
-
+	char command[20] = {0};
 	char *status;
-	char fail = 0;
-	while (1) {
-		sleep(MEASURE_STEP);
-		for (uint8_t k = 0; k < NUM_CAPTORS; k++) {
-			pthread_create(&(clients_threads[k]), NULL, 
-				       &(get_rssi_thread_routine_mesures),
-				       (void *)&routine_data[k]);
+	char retry = 0;
+	for (uint8_t i = 0; i < NB_LIGNES; i++) {
+		for (uint8_t j = 0; j < NB_COLONNES; j++) {
+			scan:
+			fprintf(stdout, "Position courante : %i, %i\n", i, j); 
+			scanf("%s", command);
+			for (uint8_t k = 0; k < NUM_CAPTORS; k++) {
+				routine_data[k].num_row = i;
+				routine_data[k].num_col = j;
+				pthread_create(&(clients_threads[k]), NULL, 
+					       &(get_rssi_thread_routine),
+					       (void *)&routine_data[k]);
+			}
+			for (uint8_t k = 0; k < 4; k ++) {
+				pthread_join(clients_threads[k], (void **)&status);
+				retry = retry || *status;
+			}
+			if (retry) {
+				print_trace(TRACE_WARNING, "Attention : impossible d'acquérir les mesures pour cette case, veuillez réessayer.\n");
+				goto scan;
+			}
 		}
-		for (uint8_t k = 0; k < NUM_CAPTORS; k ++) {
-			pthread_join(clients_threads[k], (void **)&status);
-			fail = fail || *status;
-		}
-		if (!fail) {
-			generateDataFromMesures(matrice,"test",
-						mesures[0], mesures[1], mesures[2], mesures[3]);
-			fprintf(stderr, "----Matrice générée----\n");
-		} else {
-			print_trace(TRACE_WARNING, "Une erreur est survenue lors du relevé des mesures.\n");
-		}
-
 	}
 
 	// Fermeture des clients :
@@ -213,6 +210,8 @@ int main(int arc, char**argv) {
 	l2cap_client_close(&clients[1]);
 	l2cap_client_close(&clients[2]);
 
+	afficherMatrice(matrice);
+	sauvegarderMatrice(argv[1], *matrice);
 	pthread_mutex_destroy(&mutexMatrice);
 
 	hci_close_controller(&hci_controller);

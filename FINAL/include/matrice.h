@@ -1,6 +1,8 @@
 #ifndef MATRICE_H
 #define	MATRICE_H
 
+#include <stdint.h>
+
 #define NB_CAPTEURS 4
 #define NB_MESURES 5
 
@@ -10,13 +12,15 @@ int timeReference;
  * Ce que contient chaque case de la matrice.
  */
 struct Valeurs {
-	double table[NB_CAPTEURS+1];
+	int nbCapteurs;
+	double *table;
 };
 
 /**
  * La matrice.
  */
 struct Matrice {
+	int nbCapteurs;
 	int nbLines;
 	int nbColumns;
 	struct Valeurs **val;
@@ -36,9 +40,13 @@ struct listPoints{
     struct listPoints* next;
 };
 
-extern struct Matrice *CreateMatrice(int nbLines,int nbColumns);
+extern struct Matrice *CreateMatrice(int nbLines,int nbColumns, int nbCapteurs);
 
 extern void insertVal(struct Matrice *matrice, int i, int j, int capteur, char *mesures);
+
+extern struct Matrice *ouvrirMatrice(char *file);
+
+extern int8_t sauvegarderMatrice(char *file, struct Matrice matrice);
 
 extern void afficherValeurs(struct Valeurs v);
 
@@ -49,8 +57,6 @@ extern struct Valeurs getElement(struct Matrice *m,int line, int column);
 extern void setElement(struct Matrice *m, int line, int column, struct Valeurs elem);
 
 extern struct Point *bestPosition(struct Matrice *m,struct Valeurs* mesure);
-
-extern void setDistances(struct Matrice *m,struct Valeurs* mesure);
 
 extern int* getMesures(char* mesures);
 

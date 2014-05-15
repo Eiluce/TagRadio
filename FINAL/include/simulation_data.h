@@ -10,4 +10,6 @@
 #define SCAN_INTERVAL 0x20
 #define SCAN_WINDOW 0x10
 
+#define MEASURE_STEP 3
+
 #endif

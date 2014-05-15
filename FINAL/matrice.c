@@ -11,20 +11,18 @@
  * @param nbColumns Nombre de colonnes.
  * @return La matrice.
  */
-struct Matrice *CreateMatrice(int nbLines, int nbColumns) {
-    struct Matrice *result = malloc(sizeof (struct Matrice));
+struct Matrice *CreateMatrice(int nbLines, int nbColumns, int nbCapteurs) {
+    struct Matrice *result = calloc(1,sizeof (struct Matrice));
     result->nbColumns = nbColumns;
-    result->nbLines = nbLines;
+    result->nbLines = nbLines;	
+	result->nbCapteurs = nbCapteurs;
     result->val = calloc(nbLines, sizeof (double *));
 
     for (int i = 0; i < nbLines; i++) {
         result->val[i] = calloc(nbColumns, sizeof (struct Valeurs));
         for (int j = 0; j < nbColumns; j++) {
-            struct Valeurs val;
-            for (int k = 0; k < NB_CAPTEURS; k++) {
-                val.table[k] = 0;
-            }
-            result->val[i][j] = val;
+		result->val[i][j].nbCapteurs = nbCapteurs;
+            result->val[i][j].table = calloc(nbCapteurs, sizeof(double));
         }
     }
     return result;
@@ -34,12 +32,68 @@ void insertVal(struct Matrice *matrice, int i, int j, int capteur, char *mesures
 	matrice->val[i][j].table[capteur] = moyenneMesures(getMesures(mesures));
 }
 
+struct Matrice *ouvrirMatrice(char *file) {
+
+	FILE *fichier = fopen(file, "r");
+	if (!fichier) {
+		perror("open matrix");
+		return NULL;
+	}
+
+	struct Matrice *res = NULL;
+	int nbLines = 0;
+	int nbCol = 0;
+	int nbCap = 0;
+	char temp[50];
+	fscanf(fichier, "%i %i\n", &(nbLines), &(nbCol));
+	fgets(temp, 50, fichier);
+	fscanf(fichier, "%i\n\n", &(nbCap));
+	fgets(temp, 50, fichier);
+	res = CreateMatrice(nbLines, nbCol, nbCap);	
+
+	int temp1, temp2;
+	for (int i = 0; i < nbLines; i++) {
+        	for (int j = 0; j < nbCol; j++) {
+			fscanf(fichier, "%i %i\n", &temp1, &temp2);
+			fgets(temp, 50, fichier);
+			for (int k = 0; k < nbCap; k++) {
+       			  	fscanf(fichier, "%f\n", (float *)&(res->val[i][j].table[k]));
+				fgets(temp, 50, fichier);
+    			}
+        	}
+    	}
+	fclose(fichier);
+	return res;
+
+	
+}
+
+int8_t sauvegarderMatrice(char *file, struct Matrice matrice) {
+	FILE *fichier = fopen(file, "w");
+	if (!fichier) {
+		return -1;
+	}
+
+	fprintf(fichier, "%i %i\n", matrice.nbLines, matrice.nbColumns);
+	fprintf(fichier, "%i\n\n", matrice.nbCapteurs);
+	for (int i = 0; i < matrice.nbLines; i++) {
+        	for (int j = 0; j < matrice.nbColumns; j++) {
+			fprintf(fichier, "%i %i\n", i, j);
+			for (int k = 0; k < matrice.val[i][j].nbCapteurs; k++) {
+       			    fprintf(fichier, "%f\n", (float)matrice.val[i][j].table[k]);
+    			}
+        	}
+    	}
+	fclose(fichier);
+	return 0;
+}
+
 /**
  * Affiche les coefficients d'une structure Valeurs.
  * @param v
  */
 void afficherValeurs(struct Valeurs v) {
-    for (int i = 0; i < NB_CAPTEURS + 1; i++) {
+    for (int i = 0; i < v.nbCapteurs; i++) {
         printf("Valeur : %f\n", v.table[i]);
     }
 }
@@ -88,7 +142,7 @@ void setElement(struct Matrice *m, int line, int column, struct Valeurs elem) {
  */
 static double distance(struct Valeurs* v1, struct Valeurs* v2) {
     double dist = 0;
-    for (int i = 0; i < NB_CAPTEURS; i++) {
+    for (int i = 0; i < v1->nbCapteurs; i++) {
         dist += (v1->table[i] - v2->table[i]) * (v1->table[i] - v2->table[i]);
     }
     return sqrt(dist);
@@ -122,21 +176,6 @@ struct Point *bestPosition(struct Matrice *m, struct Valeurs* mesure) {
     //coordBestCase->y = bestCase % m->nbColumns;
 
     return coordBestCase;
-}
-
-/**
- * Met à jour le dernier champ de chaque case avec la distance par rapport à la mesure.
- * @param m
- * @param mesure
- */
-void setDistances(struct Matrice *m, struct Valeurs* mesure) {
-    for (int i = 0; i < m->nbLines; i++) {
-        for (int j = 0; j < m->nbColumns; j++) {
-            if (m->val[i] != NULL) {
-                m->val[i][j].table[NB_CAPTEURS] = distance(&m->val[i][j], mesure);
-            }
-        }
-    }
 }
 
 /**
