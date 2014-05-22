@@ -5,12 +5,14 @@
 #include <bluetooth/bluetooth.h>
 #include <stdint.h>
 
+#define L2CAP_SERVER_UNIVERSAL_STOP "STOP"
+
 /* A NOTER : les ports L2CAP dynamiques vont de 4097 (0x1001) à 32765, mais en ne prenant que les numéros impairs !
  */
 
 
 // Structure représentant un client traité par le serveur.
-typedef struct client_t { // ASSOCIER UN ID PERSO A UN CLIENT ????????????????????????? => MAINTENIR TABLE IDs ??
+typedef struct client_t { // ASSOCIER UN ID PERSO A UN CLIENT ? => MAINTENIR TABLE IDs ??
 	l2cap_socket_t server_sock; // Socket côté serveur.
 	int8_t conn_id; // Id de la connexion établie via la précédente socket.
 	struct sockaddr_l2 rem_addr; // Adresse du device client.

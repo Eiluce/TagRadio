@@ -102,7 +102,9 @@ static void *socket_thread_routine(void *data) {
 		sprintf(debug, "Connexion en attente sur la socket %i...\n", sock);
 		print_trace(TRACE_INFO, debug);
 
-		// Maintenant que la socket est en attente de connexion, on va vérifier l'arrivée de connexions éventuelles et les accepter.
+		/* Maintenant que la socket est en attente de connexion,
+		   on va vérifier l'arrivée de connexions éventuelles et les accepter.
+		*/
 		struct pollfd p;
 		int8_t n = 0;
 		p.fd = sock;
@@ -165,8 +167,8 @@ static void *socket_thread_routine(void *data) {
 			goto end;
 		}
 		num_req++;
-		if (strcmp(routine_data->server.clients[i].buffer, "CLOSE") == 0) {
-			char closeACK[10] = "CLOSE_ACK";
+		if (strcmp(routine_data->server.clients[i].buffer, L2CAP_SERVER_UNIVERSAL_STOP) == 0) {
+			char closeACK[10] = "STOP_ACK";
 			write(routine_data->server.clients[i].conn_id, closeACK, strlen(closeACK));
 			thread_launched = 0;
 		}

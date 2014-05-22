@@ -1240,7 +1240,7 @@ char *hci_LE_get_RSSI(hci_socket_t *hci_socket, hci_controller_t *hci_controller
 						fprintf(file, "%i\n", *rssi);
 					}
 					char rssi_string_val[5] = {0};
-					sprintf(rssi_string_val, "%i ;", *rssi);
+					sprintf(rssi_string_val, "%i;", *rssi);
 					strcat(res, rssi_string_val);
 					k++;
 				}

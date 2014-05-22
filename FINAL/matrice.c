@@ -12,20 +12,20 @@
  * @return La matrice.
  */
 struct Matrice *CreateMatrice(int nbLines, int nbColumns, int nbCapteurs) {
-    struct Matrice *result = calloc(1,sizeof (struct Matrice));
-    result->nbColumns = nbColumns;
-    result->nbLines = nbLines;	
+	struct Matrice *result = calloc(1,sizeof (struct Matrice));
+	result->nbColumns = nbColumns;
+	result->nbLines = nbLines;	
 	result->nbCapteurs = nbCapteurs;
-    result->val = calloc(nbLines, sizeof (double *));
+	result->val = calloc(nbLines, sizeof (double *));
 
-    for (int i = 0; i < nbLines; i++) {
-        result->val[i] = calloc(nbColumns, sizeof (struct Valeurs));
-        for (int j = 0; j < nbColumns; j++) {
-		result->val[i][j].nbCapteurs = nbCapteurs;
-            result->val[i][j].table = calloc(nbCapteurs, sizeof(double));
-        }
-    }
-    return result;
+	for (int i = 0; i < nbLines; i++) {
+		result->val[i] = calloc(nbColumns, sizeof (struct Valeurs));
+		for (int j = 0; j < nbColumns; j++) {
+			result->val[i][j].nbCapteurs = nbCapteurs;
+			result->val[i][j].table = calloc(nbCapteurs, sizeof(double));
+		}
+	}
+	return result;
 }
 
 void insertVal(struct Matrice *matrice, int i, int j, int capteur, char *mesures) {
@@ -45,20 +45,18 @@ struct Matrice *ouvrirMatrice(char *file) {
 	int nbCol = 0;
 	int nbCap = 0;
 	char temp[50];
-	fscanf(fichier, "%i %i\n", &(nbLines), &(nbCol));
-	fgets(temp, 50, fichier);
-	fscanf(fichier, "%i\n\n", &(nbCap));
-	fgets(temp, 50, fichier);
+	fscanf(fichier, "%i %i", &(nbLines), &(nbCol));
+	fscanf(fichier, "%i", &(nbCap));
 	res = CreateMatrice(nbLines, nbCol, nbCap);	
 
 	int temp1, temp2;
 	for (int i = 0; i < nbLines; i++) {
         	for (int j = 0; j < nbCol; j++) {
-			fscanf(fichier, "%i %i\n", &temp1, &temp2);
-			fgets(temp, 50, fichier);
+			fscanf(fichier, "%i %i", &temp1, &temp2);
 			for (int k = 0; k < nbCap; k++) {
-       			  	fscanf(fichier, "%f\n", (float *)&(res->val[i][j].table[k]));
-				fgets(temp, 50, fichier);
+				float temp;
+				fscanf(fichier, "%f", &temp);
+				res->val[i][j].table[k] = temp;
     			}
         	}
     	}

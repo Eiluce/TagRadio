@@ -19,7 +19,7 @@ static void treat_buffer_default_func(l2cap_server_t server, uint8_t num_client)
 	fprintf(stderr, "Buffer trace : %s\n", server.clients[num_client].buffer);
 	if (strcmp(server.clients[num_client].buffer, "GET_RSSI") == 0) {
 		server.send_response(server, num_client, SERVER_SEND_RSSI);
-	}
+	} 		
 }
 
 static void send_response_default_func(l2cap_server_t server, uint8_t num_client, uint8_t res_type) {
