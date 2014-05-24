@@ -47,8 +47,7 @@ struct Matrice *ouvrirMatrice(char *file) {
 	char temp[50];
 	fscanf(fichier, "%i %i", &(nbLines), &(nbCol));
 	fscanf(fichier, "%i", &(nbCap));
-	res = CreateMatrice(nbLines, nbCol, nbCap);	
-
+	res = CreateMatrice(nbLines, nbCol, nbCap);
 	int temp1, temp2;
 	for (int i = 0; i < nbLines; i++) {
         	for (int j = 0; j < nbCol; j++) {
@@ -338,8 +337,8 @@ void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFich
     double distMax;
     int nbPoints = 5; //nombre de points sélectionnés
 
-    for (int i = 0; i < m->nbColumns; i++) {
-        for (int j = 0; j < m->nbLines; j++) {
+    for (int i = 0; i < m->nbLines; i++) {
+        for (int j = 0; j < m->nbColumns; j++) {
             struct Point point;
             point.x = i;
             point.y = j;
@@ -355,6 +354,7 @@ void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFich
     if (fichier != NULL) {
         //printf("fichier != NULL\n");
         fprintf(fichier, "d %i\n\n", getTimeInMs());
+	fprintf(fichier, "reset\n\n");
         struct listPoints* posCour = list;
         while (posCour != NULL) {
             //printf("dans boucle\n");

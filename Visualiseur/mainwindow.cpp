@@ -22,7 +22,12 @@ MainWindow::MainWindow(QWidget *parent) :
     p_view = new QGraphicsView(p_scene, this);
 
     QPixmap background(QCoreApplication::applicationDirPath() +
-                                   "/img/sol.jpg");
+                                   "/img/sol.png");
+    if (background.isNull()) {
+        std::cout << "Ouverture de sol.png échouée, ouverture de sol.jpg" << std::endl;
+        background = QPixmap(QCoreApplication::applicationDirPath() +
+                                       "/img/sol.jpg");
+    }
 
     p_scene->setBackgroundBrush(QBrush(background));
     p_view->setGeometry(10,10,505,505);
@@ -40,17 +45,32 @@ MainWindow::MainWindow(QWidget *parent) :
     p_changeTableSize->setGeometry(50, 560, 120, 30);
 
     pauseButton = new QPushButton("", this);
-    pauseButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/pause.png"));
+    QIcon pauseIcon(QCoreApplication::applicationDirPath() + "/img/pause.png");
+    if (pauseIcon.isNull()) {
+        std::cout << "Ouverture de pause.png échouée, ouverture de pause.jpg" << std::endl;
+        pauseIcon = QIcon((QCoreApplication::applicationDirPath() + "/img/pause.jpg"));
+    }
+    pauseButton->setIcon(pauseIcon);
     pauseButton->setGeometry(590, 250, 30, 30);
     pauseButton->setDisabled(true);
 
     stopButton = new QPushButton("", this);
-    stopButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/stop.png"));
+    QIcon stopIcon(QCoreApplication::applicationDirPath() + "/img/stop.png");
+    if (stopIcon.isNull()) {
+        std::cout << "Ouverture de stop.png échouée, ouverture de stop.jpg" << std::endl;
+        pauseIcon = QIcon((QCoreApplication::applicationDirPath() + "/img/stop.jpg"));
+    }
+    stopButton->setIcon(stopIcon);
     stopButton->setGeometry(630, 250, 30, 30);
     stopButton->setDisabled(true);
 
     stepButton = new QPushButton("", this);
-    stepButton->setIcon(QIcon(QCoreApplication::applicationDirPath() + "/img/step.png"));
+    QIcon stepIcon(QCoreApplication::applicationDirPath() + "/img/step.png");
+    if (stepIcon.isNull()) {
+        std::cout << "Ouverture de step.png échouée, ouverture de step.jpg" << std::endl;
+        stepIcon = QIcon((QCoreApplication::applicationDirPath() + "/img/step.jpg"));
+    }
+    stepButton->setIcon(stepIcon);
     stepButton->setGeometry(670, 250, 30, 30);
     stepButton->setDisabled(true);
 
@@ -116,7 +136,12 @@ void MainWindow::startWithValues(int aX, int aY, int tX, int tY) {
         p_scene->addLine(0, sizeRectY*j, 500, sizeRectY*j, linesPen);
     }
     QPixmap woodPix(QCoreApplication::applicationDirPath() +
-                                   "/img/table.jpg");
+                                   "/img/table.png");
+    if (woodPix.isNull()) {
+        std::cout << "Ouverture de table.png échouée, ouverture de table.jpg" << std::endl;
+        woodPix = QPixmap(QCoreApplication::applicationDirPath() +
+                                    "/img/table.jpg");
+    }
     table = p_scene->addRect( (aX/2 - tX/2) * sizeRectX, (aY/2 - tY/2) * sizeRectY,
                       sizeOfTableX, sizeOfTableY, QPen(), QBrush(woodPix));
 
@@ -251,7 +276,12 @@ void MainWindow::changeTableSize() {
 void MainWindow::modifyTableSize(int p1X, int p1Y, int p2X, int p2Y) {
     p_scene->removeItem(table);
     QPixmap woodPix(QCoreApplication::applicationDirPath() +
-                                   "/img/table.jpg");
+                                   "/img/table.png");
+    if (woodPix.isNull()) {
+        std::cout << "Ouverture de table.png échouée, ouverture de table.jpg" << std::endl;
+        woodPix = QPixmap(QCoreApplication::applicationDirPath() +
+                                    "/img/table.jpg");
+    }
     int topX = qMin(p1X, p2X);
     int topY = qMin(p1Y, p2Y);
     int sizeX = (qMax(p1X, p2X) - topX + 1) * sizeRectX;

@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define NB_CAPTEURS 4
-#define NB_MESURES 5
+#define NB_MESURES 8
 
 int timeReference;
 

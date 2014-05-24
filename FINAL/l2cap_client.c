@@ -103,6 +103,10 @@ int8_t l2cap_client_send(l2cap_client_t *client, int16_t timeout, uint8_t req_ty
 			if (errno == EAGAIN || errno == EINTR) {
 				continue;
 			}
+			if (errno == ENOTCONN) {
+				client->connected = 0;
+				l2cap_client_close(client);
+			}
 			perror("l2cap_client_send : error while polling socket");
 			return -1;
 		}
@@ -112,12 +116,21 @@ int8_t l2cap_client_send(l2cap_client_t *client, int16_t timeout, uint8_t req_ty
 			perror("l2cap_client_send : error while polling socket");
 			return -1;
 		}
-		while(bytes_read = read(client->l2cap_socket.sock,
+		while((bytes_read = read(client->l2cap_socket.sock,
 					client->buffer,
-					client->buffer_length) < 0) {
+					client->buffer_length)) < 0) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
+			if (errno == ENOTCONN) {
+				client->connected = 0;
+				l2cap_client_close(client);
+			}
 			perror("l2cap_client_send : error while reading socket.\n");
+			return -1;
+		}
+		if (bytes_read == 0) { // 0 Bytes read means that the connection has been lost.
+			print_trace(TRACE_WARNING, "l2cap_client: connection reset by peer.\n");
+			client->connected = 0;
 			return -1;
 		}
 		client->treat_buffer(*client);
@@ -133,5 +146,5 @@ int8_t l2cap_client_send(l2cap_client_t *client, int16_t timeout, uint8_t req_ty
 
 void l2cap_client_close(l2cap_client_t *client) {
 	free(client->buffer);
-	close(client->l2cap_socket.sock);
+	close_l2cap_socket(&(client->l2cap_socket));
 }

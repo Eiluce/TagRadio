@@ -78,8 +78,15 @@ static void *get_rssi_thread_routine(void *data) {
 	l2cap_client_t *client = routine_data->client;
 
 	if (client) {
+		if (!client->connected) {
+			if (l2cap_client_connect(client) != 0) {	
+				perror("client_connect : unable to connect client.");
+				*status = 1;
+				pthread_exit((void *)status);
+			}
+		}
 		l2cap_client_send(client, 8000, CLIENT_GET_RSSI);
-		if (client->buffer) { 
+		if (client->buffer && (strcmp(client->buffer, "") != 0)) { 
 			pthread_mutex_lock(&mutexMatrice);
 			insertVal(matrice, i,j, num_captor, client->buffer);
 			pthread_mutex_unlock(&mutexMatrice);
@@ -90,7 +97,7 @@ static void *get_rssi_thread_routine(void *data) {
 		char * rssi_values;
 		rssi_values = hci_LE_get_RSSI(NULL, hci_controller, NULL, NULL, NUM_MEASURES, 0x00, SCAN_INTERVAL, SCAN_WINDOW, 0x00, 0x01);
 		fprintf(stderr, "%s\n", rssi_values);
-		if (rssi_values) {
+		if (rssi_values && (strcmp(rssi_values, "") != 0)) {
 			pthread_mutex_lock(&mutexMatrice);
 			insertVal(matrice, i, j, NUM_CAPTORS-1, rssi_values);
 			pthread_mutex_unlock(&mutexMatrice);
@@ -179,6 +186,7 @@ int main(int arc, char**argv) {
 	for (uint8_t i = 0; i < NB_LIGNES; i++) {
 		for (uint8_t j = 0; j < NB_COLONNES; j++) {
 			scan:
+			retry = 0;
 			fprintf(stdout, "Position courante : %i, %i\n", i, j); 
 			scanf("%s", command);
 			for (uint8_t k = 0; k < NUM_CAPTORS; k++) {

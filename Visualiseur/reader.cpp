@@ -182,7 +182,7 @@ void Reader::doWorkOffline() {
             return;
         }
 
-        emit sendPoint(val1, val2, val3);
+        emit sendPoint(val2, val1, val3);
     }
 
     mutex.lock();

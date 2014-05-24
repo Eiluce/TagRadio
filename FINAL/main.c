@@ -1,4 +1,5 @@
 #include "l2cap_client.h"
+#include "l2cap_server.h"
 #include "hci_controller.h"
 #include "hci_socket.h"
 #include "matrice.h"
@@ -54,7 +55,7 @@ static void send_req_func(l2cap_client_t client, uint8_t req_type) {
 		write(sock, req, sizeof(req));
 		break;
 	case CLIENT_CLOSE_CONNECTION :
-		strcpy(req , "CLOSE");
+		strcpy(req , L2CAP_SERVER_UNIVERSAL_STOP);
 		write(sock, req, sizeof(req));
 		break;
 	default:
@@ -78,9 +79,16 @@ static void *get_rssi_thread_routine_mesures(void *data) {
 	struct Matrice *matrice = routine_data->matrice;
 	l2cap_client_t *client = routine_data->client;
 
-	if (client) {
+	if (client) {	
+		if (!client->connected) {
+			if (l2cap_client_connect(client) != 0) {	
+				perror("client_connect : unable to connect client.");
+				*status = 1;
+				pthread_exit((void *)status);
+			}
+		}
 		l2cap_client_send(client, 8000, CLIENT_GET_RSSI);
-		if (client->buffer) { 
+		if (client->buffer && (strcmp(client->buffer, "") != 0)) { 
 			mesures[num_captor] = client->buffer;
 		} else {
 			*status = 1;
@@ -182,6 +190,7 @@ int main(int arc, char**argv) {
 	char *status;
 	char fail = 0;
 	while (1) {
+		fail = 0;
 		sleep(MEASURE_STEP);
 		for (uint8_t k = 0; k < NUM_CAPTORS; k++) {
 			pthread_create(&(clients_threads[k]), NULL, 
@@ -193,7 +202,7 @@ int main(int arc, char**argv) {
 			fail = fail || *status;
 		}
 		if (!fail) {
-			generateDataFromMesures(matrice,"test",
+			generateDataFromMesures(matrice,"COUCOU.txt",
 						mesures[0], mesures[1], mesures[2], mesures[3]);
 			fprintf(stderr, "----Matrice générée----\n");
 		} else {

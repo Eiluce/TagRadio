@@ -96,6 +96,7 @@ static void *socket_thread_routine(void *data) {
 	int16_t timeout = routine_data->timeout;
 	char thread_launched = 0;
 	char debug[100] = {0};
+	char end_info[100] = {0};
 
 	if (sock >= 0) {
 		listen(sock, 1);
@@ -163,7 +164,7 @@ static void *socket_thread_routine(void *data) {
 			goto end;
 		}
 		if (bytes_read == 0) { // 0 Bytes read means that the connection has been lost.
-			print_trace(TRACE_WARNING, "l2cap_server : nothing to read on the socket.\n");
+			print_trace(TRACE_WARNING, "l2cap_server : connection reset by peer.\n");
 			goto end;
 		}
 		num_req++;
@@ -176,6 +177,8 @@ static void *socket_thread_routine(void *data) {
 	}
 
  end:
+	sprintf(end_info, "l2cap_server : connection %i ended.\n", routine_data->server.clients[i].conn_id);
+	print_trace(TRACE_INFO, end_info);
 	close(routine_data->server.clients[i].conn_id);
 
 	return NULL;

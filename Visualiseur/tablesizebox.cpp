@@ -59,7 +59,11 @@ TableSizeBox::TableSizeBox(int nbCol, int nbLin, QWidget *parent) :
     p_quit->setGeometry(155,360,100,20);
 
     QPixmap background(QCoreApplication::applicationDirPath() +
-                                   "/img/sol.jpg");
+                                   "/img/sol.png");
+    if (background.isNull()) {
+       background = QPixmap(QCoreApplication::applicationDirPath() +
+                                    "/img/sol.jpg");
+    }
 
     p_scene->setBackgroundBrush(QBrush(background));
     p_view->setGeometry(10,50,255,255);
@@ -145,7 +149,11 @@ void TableSizeBox::viewValues() {
             pos2X = p2X.toInt(), pos2Y = p2Y.toInt();
 
     QPixmap woodPix(QCoreApplication::applicationDirPath() +
-                                   "/img/table.jpg");
+                                   "/img/table.png");
+    if (woodPix.isNull()) {
+        woodPix = QPixmap(QCoreApplication::applicationDirPath() +
+                                    "/img/table.jpg");
+    }
 
     if (table != 0) {
         p_scene->removeItem(table);
