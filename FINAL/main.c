@@ -40,7 +40,7 @@ struct routine_data_t {
 	uint8_t num_captor;
 	uint8_t num_row;
 	uint8_t num_col;
-	struct Matrice *matrice;
+	struct Matrix *matrice;
 };
 
 static void send_req_func(l2cap_client_t client, uint8_t req_type) {
@@ -76,7 +76,7 @@ static void *get_rssi_thread_routine_mesures(void *data) {
 	int16_t timeout = routine_data->timeout;
 	hci_controller_t *hci_controller = routine_data->hci_controller; 
 	bt_device_t sensor = routine_data->sensor;
-	struct Matrice *matrice = routine_data->matrice;
+	struct Matrix *matrice = routine_data->matrice;
 	l2cap_client_t *client = routine_data->client;
 
 	if (client) {	
@@ -119,11 +119,11 @@ int main(int arc, char**argv) {
 		return EXIT_FAILURE;
 	}	
 
-	struct Matrice *matrice = ouvrirMatrice(argv[1]);
+	struct Matrix *matrice = open_matrix(argv[1]);
 	if (!matrice) {
 		return EXIT_FAILURE;
 	}
-	afficherMatrice(matrice);
+	display_matrix(matrice);
 	pthread_mutex_init(&mutexMatrice, NULL);
 
 	for (uint8_t i = 0; i < NUM_CAPTORS; i++) {
@@ -202,7 +202,7 @@ int main(int arc, char**argv) {
 			fail = fail || *status;
 		}
 		if (!fail) {
-			generateDataFromMesures(matrice,"COUCOU.txt",
+			generate_data_from_measures(matrice,"COUCOU.txt",
 						mesures[0], mesures[1], mesures[2], mesures[3]);
 			fprintf(stderr, "----Matrice générée----\n");
 		} else {

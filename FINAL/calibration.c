@@ -39,7 +39,7 @@ struct routine_data_t {
 	uint8_t num_captor;
 	uint8_t num_row;
 	uint8_t num_col;
-	struct Matrice *matrice;
+	struct Matrix *matrice;
 };
 
 static void send_req_func(l2cap_client_t client, uint8_t req_type) {
@@ -74,7 +74,7 @@ static void *get_rssi_thread_routine(void *data) {
 	int16_t timeout = routine_data->timeout;
 	hci_controller_t *hci_controller = routine_data->hci_controller; 
 	bt_device_t sensor = routine_data->sensor;
-	struct Matrice *matrice = routine_data->matrice;
+	struct Matrix *matrice = routine_data->matrice;
 	l2cap_client_t *client = routine_data->client;
 
 	if (client) {
@@ -88,7 +88,7 @@ static void *get_rssi_thread_routine(void *data) {
 		l2cap_client_send(client, 8000, CLIENT_GET_RSSI);
 		if (client->buffer && (strcmp(client->buffer, "") != 0)) { 
 			pthread_mutex_lock(&mutexMatrice);
-			insertVal(matrice, i,j, num_captor, client->buffer);
+			insert_val(matrice, i,j, num_captor, client->buffer);
 			pthread_mutex_unlock(&mutexMatrice);
 		} else {
 			*status = 1;
@@ -99,7 +99,7 @@ static void *get_rssi_thread_routine(void *data) {
 		fprintf(stderr, "%s\n", rssi_values);
 		if (rssi_values && (strcmp(rssi_values, "") != 0)) {
 			pthread_mutex_lock(&mutexMatrice);
-			insertVal(matrice, i, j, NUM_CAPTORS-1, rssi_values);
+			insert_val(matrice, i, j, NUM_CAPTORS-1, rssi_values);
 			pthread_mutex_unlock(&mutexMatrice);
 		} else {
 			*status = 1;
@@ -119,7 +119,7 @@ int main(int arc, char**argv) {
 		return EXIT_FAILURE;
 	} 
 	
-	struct Matrice *matrice = CreateMatrice(NB_LIGNES,NB_COLONNES, NUM_CAPTORS);
+	struct Matrix *matrice = create_matrix(NB_LIGNES,NB_COLONNES, NUM_CAPTORS);
 	pthread_mutex_init(&mutexMatrice, NULL);
 
 	for (uint8_t i = 0; i < NUM_CAPTORS; i++) {
@@ -218,8 +218,8 @@ int main(int arc, char**argv) {
 	l2cap_client_close(&clients[1]);
 	l2cap_client_close(&clients[2]);
 
-	afficherMatrice(matrice);
-	sauvegarderMatrice(argv[1], *matrice);
+	display_matrix(matrice);
+	save_matrix(argv[1], *matrice);
 	pthread_mutex_destroy(&mutexMatrice);
 
 	hci_close_controller(&hci_controller);

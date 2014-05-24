@@ -11,19 +11,19 @@ int timeReference;
 /**
  * Ce que contient chaque case de la matrice.
  */
-struct Valeurs {
-	int nbCapteurs;
+struct Values {
+	int nb_sensors;
 	double *table;
 };
 
 /**
  * La matrice.
  */
-struct Matrice {
-	int nbCapteurs;
-	int nbLines;
-	int nbColumns;
-	struct Valeurs **val;
+struct Matrix {
+	int nb_sensors;
+	int nb_lines;
+	int nb_columns;
+	struct Values **val;
 };
 
 /**
@@ -40,31 +40,31 @@ struct listPoints{
     struct listPoints* next;
 };
 
-extern struct Matrice *CreateMatrice(int nbLines,int nbColumns, int nbCapteurs);
+extern struct Matrix *create_matrix(int nb_lines,int nb_columns, int nb_sensors);
 
-extern void insertVal(struct Matrice *matrice, int i, int j, int capteur, char *mesures);
+extern void insert_val(struct Matrix *matrice, int i, int j, int capteur, char *measures);
 
-extern struct Matrice *ouvrirMatrice(char *file);
+extern struct Matrix *open_matrix(char *file);
 
-extern int8_t sauvegarderMatrice(char *file, struct Matrice matrice);
+extern int8_t save_matrix(char *file, struct Matrix matrice);
 
-extern void afficherValeurs(struct Valeurs v);
+extern void display_values(struct Values v);
 
-extern void afficherMatrice(struct Matrice *m);
+extern void display_matrix(struct Matrix *m);
 
-extern struct Valeurs getElement(struct Matrice *m,int line, int column);
+extern struct Values get_element(struct Matrix *m,int line, int column);
 
-extern void setElement(struct Matrice *m, int line, int column, struct Valeurs elem);
+extern void set_element(struct Matrix *m, int line, int column, struct Values elem);
 
-extern struct Point *bestPosition(struct Matrice *m,struct Valeurs* mesure);
+extern struct Point *best_position(struct Matrix *m,struct Values* measure);
 
-extern int* getMesures(char* mesures);
+extern int* get_measures(char* measures);
 
-extern double moyenneMesures(int* mesures);
+extern double mean_measures(int* measures);
 
-extern void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFichier);
+extern void generate_data(struct Matrix* m, struct Values* measure, const char* file_name);
 
-extern void generateDataFromMesures(struct Matrice* m, const char* nomFichier,
-        char* mesures1, char* mesures2, char* mesures3, char* mesures4);
+extern void generate_data_from_measures(struct Matrix* m, const char* file_name,
+        char* measures1, char* measures2, char* measures3, char* measures4);
 
 #endif
