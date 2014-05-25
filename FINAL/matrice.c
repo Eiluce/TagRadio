@@ -280,7 +280,7 @@ static void free_list(struct listPoints* list) {
 
 static double add_point(struct listPoints** list, struct Point point, int size) {
     //printf("add_point\n");
-    double res;
+    double res = INFINITY;
     if (*list == NULL) { //Cas liste vide
         //printf("liste vide\n");
         *list = (struct listPoints*) malloc(sizeof (struct listPoints));
@@ -343,16 +343,25 @@ static int get_time_in_ms() {
 void generate_data(struct Matrix* m, struct Values* measure, const char* file_name) {
 
     struct listPoints* list = NULL;
-    double max_dist;
+    double max_dist = -1;
     int nb_points = 5; //nombre de points sélectionnés
 
     for (int i = 0; i < m->nb_lines; i++) {
         for (int j = 0; j < m->nb_columns; j++) {
+	    double tmp_max_dist = INFINITY;
             struct Point point;
             point.x = i;
             point.y = j;
             point.proba = distance(&m->val[i][j], measure);
-            max_dist = add_point(&list, point, nb_points);
+	    //on garde la plus petite des distances non retenues pour formater après la liste des distances.
+	    if (max_dist != -1) {
+		tmp_max_dist = add_point(&list, point, nb_points);
+	    } else {
+		max_dist = add_point(&list, point, nb_points);
+	    }
+	    if (tmp_max_dist < max_dist) {
+		max_dist = tmp_max_dist;
+	    }
         }
     }
 

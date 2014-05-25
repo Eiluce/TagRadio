@@ -10,7 +10,7 @@
 
 int main(int argc, char **argv) {
 
-	struct Matrice *matrice = CreateMatrice(NB_LIGNES,NB_COLONNES, NB_CAPTEURS);
+	struct Matrix *matrice = create_matrix(NB_LIGNES,NB_COLONNES, NB_CAPTEURS);
 
 
 	for (uint8_t i = 0; i < NB_LIGNES; i++) {
@@ -18,18 +18,18 @@ int main(int argc, char **argv) {
 			for (uint8_t k = 0; k < 4; k++) {
 				char rssi[33] = {0};
 				sprintf(rssi, "-44;-%i;-45;-43;-44;", (i*j)%80);
-				insertVal(matrice, i, j, k, rssi);
+				insert_val(matrice, i, j, k, rssi);
 			}
 		}
 	}
 
-	afficherMatrice(matrice);
+	display_matrix(matrice);
 
-	sauvegarderMatrice("testMatrice", *matrice);
+	save_matrix("testMatrice", *matrice);
 
-	matrice = ouvrirMatrice("testMatrice");
+	matrice = open_matrix("testMatrice");
 
-	afficherMatrice(matrice);
+	display_matrix(matrice);
 
 	
 	return 0;

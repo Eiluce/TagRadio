@@ -3,45 +3,103 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-/*
-#include <sys/socket.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
- */
-
 #include "matrice.h"
 
 /**
  * Initialise une matrice.
- * @param nbLines Nombre de lignes.
- * @param nbColumns Nombre de colonnes.
+ * @param nb_lines Nombre de lignes.
+ * @param nb_columns Nombre de colonnes.
  * @return La matrice.
  */
-struct Matrice *CreateMatrice(int nbLines, int nbColumns) {
-    struct Matrice *result = malloc(sizeof (struct Matrice));
-    result->nbColumns = nbColumns;
-    result->nbLines = nbLines;
-    result->val = calloc(nbLines, sizeof (double *));
+struct Matrix *create_matrix(int nb_lines, int nb_columns, int nb_sensors) {
+	struct Matrix *result = calloc(1,sizeof (struct Matrix));
+	result->nb_columns = nb_columns;
+	result->nb_lines = nb_lines;	
+	result->nb_sensors = nb_sensors;
+	result->val = calloc(nb_lines, sizeof (double *));
 
-    for (int i = 0; i < nbLines; i++) {
-        result->val[i] = calloc(nbColumns, sizeof (struct Valeurs));
-        for (int j = 0; j < nbColumns; j++) {
-            struct Valeurs val;
-            for (int k = 0; k < NB_CAPTEURS; k++) {
-                val.table[k] = 0;
-            }
-            result->val[i][j] = val;
-        }
-    }
-    return result;
+	for (int i = 0; i < nb_lines; i++) {
+		result->val[i] = calloc(nb_columns, sizeof (struct Values));
+		for (int j = 0; j < nb_columns; j++) {
+			result->val[i][j].nb_sensors = nb_sensors;
+			result->val[i][j].table = calloc(nb_sensors, sizeof(double));
+		}
+	}
+	return result;
+}
+
+/**
+ * Insère une valeur dans la matrice.
+ */
+void insert_val(struct Matrix *matrice, int i, int j, int capteur, char *measures) {
+	matrice->val[i][j].table[capteur] = mean_measures(get_measures(measures));
+}
+
+/**
+ * Ouvre une matrice depuis sa sauvegarde.
+ */
+struct Matrix *open_matrix(char *file) {
+
+	FILE *fichier = fopen(file, "r");
+	if (!fichier) {
+		perror("open matrix");
+		return NULL;
+	}
+
+	struct Matrix *res = NULL;
+	int nb_lines = 0;
+	int nb_col = 0;
+	int nb_sens = 0;
+	char temp[50];
+	fscanf(fichier, "%i %i", &(nb_lines), &(nb_col));
+	fscanf(fichier, "%i", &(nb_sens));
+	res = create_matrix(nb_lines, nb_col, nb_sens);
+	int temp1, temp2;
+	for (int i = 0; i < nb_lines; i++) {
+        	for (int j = 0; j < nb_col; j++) {
+			fscanf(fichier, "%i %i", &temp1, &temp2);
+			for (int k = 0; k < nb_sens; k++) {
+				float temp;
+				fscanf(fichier, "%f", &temp);
+				res->val[i][j].table[k] = temp;
+    			}
+        	}
+    	}
+	fclose(fichier);
+	return res;
+
+	
+}
+
+/**
+ * Sauvegarde une matrice dans un fichier.
+ */
+int8_t save_matrix(char *file, struct Matrix matrice) {
+	FILE *fichier = fopen(file, "w");
+	if (!fichier) {
+		return -1;
+	}
+
+	fprintf(fichier, "%i %i\n", matrice.nb_lines, matrice.nb_columns);
+	fprintf(fichier, "%i\n\n", matrice.nb_sensors);
+	for (int i = 0; i < matrice.nb_lines; i++) {
+        	for (int j = 0; j < matrice.nb_columns; j++) {
+			fprintf(fichier, "%i %i\n", i, j);
+			for (int k = 0; k < matrice.val[i][j].nb_sensors; k++) {
+       			    fprintf(fichier, "%f\n", (float)matrice.val[i][j].table[k]);
+    			}
+        	}
+    	}
+	fclose(fichier);
+	return 0;
 }
 
 /**
  * Affiche les coefficients d'une structure Valeurs.
  * @param v
  */
-void afficherValeurs(struct Valeurs v) {
-    for (int i = 0; i < NB_CAPTEURS + 1; i++) {
+void display_values(struct Values v) {
+    for (int i = 0; i < v.nb_sensors; i++) {
         printf("Valeur : %f\n", v.table[i]);
     }
 }
@@ -50,12 +108,12 @@ void afficherValeurs(struct Valeurs v) {
  * Affiche toute la matrice.
  * @param m
  */
-void afficherMatrice(struct Matrice *m) {
-    for (int i = 0; i < m->nbLines; i++) {
-        for (int j = 0; j < m->nbColumns; j++) {
+void display_matrix(struct Matrix *m) {
+    for (int i = 0; i < m->nb_lines; i++) {
+        for (int j = 0; j < m->nb_columns; j++) {
             printf("Ligne n° :%i ", i);
             printf("Colonne n° :%i\n", j);
-            afficherValeurs(m->val[i][j]);
+            display_values(m->val[i][j]);
         }
     }
 }
@@ -67,7 +125,7 @@ void afficherMatrice(struct Matrice *m) {
  * @param column
  * @return 
  */
-struct Valeurs getElement(struct Matrice *m, int line, int column) {
+struct Values get_element(struct Matrix *m, int line, int column) {
     return m->val[line][column];
 }
 
@@ -78,7 +136,7 @@ struct Valeurs getElement(struct Matrice *m, int line, int column) {
  * @param column
  * @param elem
  */
-void setElement(struct Matrice *m, int line, int column, struct Valeurs elem) {
+void set_element(struct Matrix *m, int line, int column, struct Values elem) {
     m->val[line][column] = elem;
 }
 
@@ -88,9 +146,9 @@ void setElement(struct Matrice *m, int line, int column, struct Valeurs elem) {
  * @param v2
  * @return 
  */
-static double distance(struct Valeurs* v1, struct Valeurs* v2) {
+static double distance(struct Values* v1, struct Values* v2) {
     double dist = 0;
-    for (int i = 0; i < NB_CAPTEURS; i++) {
+    for (int i = 0; i < v1->nb_sensors; i++) {
         dist += (v1->table[i] - v2->table[i]) * (v1->table[i] - v2->table[i]);
     }
     return sqrt(dist);
@@ -99,71 +157,56 @@ static double distance(struct Valeurs* v1, struct Valeurs* v2) {
 /**
  * Retourne la position dans la matrice correspondant le plus à la mesure.
  * @param m
- * @param mesure
+ * @param measure
  * @return 
  */
-struct Point *bestPosition(struct Matrice *m, struct Valeurs* mesure) {
-    struct Point *coordBestCase = malloc(sizeof (struct Point));
-    double distMin = INFINITY;
-    double distCour;
+struct Point *best_position(struct Matrix *m, struct Values* measure) {
+    struct Point *coord_best_case = malloc(sizeof (struct Point));
+    double min_dist = INFINITY;
+    double current_dist;
 
 
-    for (int i = 0; i < m->nbColumns; i++) {
-        for (int j = 0; j < m->nbLines; j++) {
+    for (int i = 0; i < m->nb_columns; i++) {
+        for (int j = 0; j < m->nb_lines; j++) {
             if (m->val[i] != NULL) {
-                distCour = distance(mesure, &m->val[i][j]);
-                if (distCour < distMin) {
-                    distMin = distCour;
-                    coordBestCase->x = i;
-                    coordBestCase->y = j;
+                current_dist = distance(measure, &m->val[i][j]);
+                if (current_dist < min_dist) {
+                    min_dist = current_dist;
+                    coord_best_case->x = i;
+                    coord_best_case->y = j;
                 }
             }
         }
     }
-    //coordBestCase->x = bestCase / m->nbColumns;
-    //coordBestCase->y = bestCase % m->nbColumns;
+    //coord_best_case->x = bestCase / m->nb_columns;
+    //coord_best_case->y = bestCase % m->nb_columns;
 
-    return coordBestCase;
-}
-
-/**
- * Met à jour le dernier champ de chaque case avec la distance par rapport à la mesure.
- * @param m
- * @param mesure
- */
-void setDistances(struct Matrice *m, struct Valeurs* mesure) {
-    for (int i = 0; i < m->nbLines; i++) {
-        for (int j = 0; j < m->nbColumns; j++) {
-            if (m->val[i] != NULL) {
-                m->val[i][j].table[NB_CAPTEURS] = distance(&m->val[i][j], mesure);
-            }
-        }
-    }
+    return coord_best_case;
 }
 
 /**
  * Transforme les mesures brutes en un tableau d'entiers.
- * @param mesures
+ * @param measures
  * @return Le tableau d'entiers.
  */
-int* getMesures(char* mesures) {
+int* get_measures(char* measures) {
     int* res = (int*) calloc(NB_MESURES, sizeof (int));
     int tmp = 0;
     int i = 0; //position dans la chaine
     int j = 0; //position dans le tableau
 
-    while (mesures[i] != '\0') {
-        if (mesures[i] == '-') {
+    while (measures[i] != '\0') {
+        if (measures[i] == '-') {
             i++;
-            while (mesures[i] != '\0' && mesures[i] != ';') {
-                tmp = tmp * 10 - ((int) mesures[i] - '0');
+            while (measures[i] != '\0' && measures[i] != ';') {
+                tmp = tmp * 10 - ((int) measures[i] - '0');
                 i++;
             }
         }
         res[j] = tmp;
         tmp = 0;
         j++;
-        if (mesures[i] != '\0') i++;
+        if (measures[i] != '\0') i++;
     }
 
     return res;
@@ -171,13 +214,13 @@ int* getMesures(char* mesures) {
 
 /**
  * Calcule la moyenne des mesures.
- * @param mesures
+ * @param measures
  * @return La moyenne.
  */
-double moyenneMesures(int* mesures) {
+double mean_measures(int* measures) {
     double res = 0;
     for (int i = 0; i < NB_MESURES; i++) {
-        res += mesures[i];
+        res += measures[i];
     }
     res /= NB_MESURES;
     return res;
@@ -188,12 +231,12 @@ double moyenneMesures(int* mesures) {
  * @param list
  * @return 
  */
-static int sizeList(struct listPoints* list) {
-    //printf("sizeList\n");
+static int size_list(struct listPoints* list) {
+    //printf("size_list\n");
     int size = 0;
-    struct listPoints* posCour = list;
-    while (posCour != NULL) {
-        posCour = posCour->next;
+    struct listPoints* current_pos = list;
+    while (current_pos != NULL) {
+        current_pos = current_pos->next;
         size++;
     }
     //printf("%i\n", size);
@@ -205,12 +248,12 @@ static int sizeList(struct listPoints* list) {
  * Retourne la distance de l'élément enlevé.
  * @param list
  */
-static double removeHead(struct listPoints** list) {
-    //printf("removeHead\n");
-    struct listPoints* posCour = *list;
+static double remove_head(struct listPoints** list) {
+    //printf("remove_head\n");
+    struct listPoints* current_pos = *list;
     double res = (*list)->point.proba;
     *list = (*list)->next;
-    free(posCour);
+    free(current_pos);
     return res;
 }
 
@@ -218,26 +261,26 @@ static double removeHead(struct listPoints** list) {
  * Met les probas entre 0 et 1.
  * @param list
  */
-static void formatProba(struct listPoints* list, double distMax) {
-    //printf("formatProba\n");
-    struct listPoints* posCour = list;
-    while (posCour != NULL) {
-        posCour->point.proba = 1 - posCour->point.proba / distMax;
-        posCour = posCour->next;
+static void format_proba(struct listPoints* list, double distMax) {
+    //printf("format_proba\n");
+    struct listPoints* current_pos = list;
+    while (current_pos != NULL) {
+        current_pos->point.proba = 1 - current_pos->point.proba / distMax;
+        current_pos = current_pos->next;
     }
 }
 
-static void freeList(struct listPoints* list) {
-    //printf("freeList\n");
+static void free_list(struct listPoints* list) {
+    //printf("free_list\n");
     while (list != NULL) {
         free(list);
         list = list->next;
     }
 }
 
-static double addPoint(struct listPoints** list, struct Point point, int size) {
-    //printf("addPoint\n");
-    double res;
+static double add_point(struct listPoints** list, struct Point point, int size) {
+    //printf("add_point\n");
+    double res = INFINITY;
     if (*list == NULL) { //Cas liste vide
         //printf("liste vide\n");
         *list = (struct listPoints*) malloc(sizeof (struct listPoints));
@@ -245,37 +288,37 @@ static double addPoint(struct listPoints** list, struct Point point, int size) {
         (*list)->next = NULL;
     } else {
         int pos = 1;
-        struct listPoints* posCour = *list;
-        struct listPoints* posPred = *list;
+        struct listPoints* current_pos = *list;
+        struct listPoints* pred_pos = *list;
         /*On avance tant qu'on est plus petit*/
-        while (posCour != NULL && point.proba < posCour->point.proba) {
-            posPred = posCour;
-            posCour = posCour->next;
+        while (current_pos != NULL && point.proba < current_pos->point.proba) {
+            pred_pos = current_pos;
+            current_pos = current_pos->next;
             pos++;
         }
-        if (posCour == NULL) { //insertion en queue
+        if (current_pos == NULL) { //insertion en queue
             //printf("queue\n");
-            posPred->next = (struct listPoints*) malloc(sizeof (struct listPoints));
-            posPred->next->point = point;
-            posPred->next->next = NULL;
+            pred_pos->next = (struct listPoints*) malloc(sizeof (struct listPoints));
+            pred_pos->next->point = point;
+            pred_pos->next->next = NULL;
         } else {
             if (pos == 1) { //insertion en tête
                 //printf("tete\n");
-                struct listPoints* newHead = (struct listPoints*) malloc(sizeof (struct listPoints));
-                newHead->point = point;
-                newHead->next = *list;
-                *list = newHead;
+                struct listPoints* new_head = (struct listPoints*) malloc(sizeof (struct listPoints));
+                new_head->point = point;
+                new_head->next = *list;
+                *list = new_head;
             } else { //insertion ailleur
                 //printf("ailleurs\n");
-                struct listPoints* newPoint = (struct listPoints*) malloc(sizeof (struct listPoints));
-                posPred->next = newPoint;
-                newPoint->point = point;
-                newPoint->next = posCour;
+                struct listPoints* new_point = (struct listPoints*) malloc(sizeof (struct listPoints));
+                pred_pos->next = new_point;
+                new_point->point = point;
+                new_point->next = current_pos;
             }
         }
         //Supression de la tête si la liste est trop grande.
-        if (size < sizeList(*list)) {
-            res = removeHead(list);
+        if (size < size_list(*list)) {
+            res = remove_head(list);
         }
     }
     //printf("fin add\n");
@@ -287,85 +330,94 @@ static double addPoint(struct listPoints** list, struct Point point, int size) {
  * N'a pas de précision meilleure que la seconde.
  * Ne pas oublier d'initialiser timeReference au début du main avec time(NULL)
  */
-static int getTimeInMs() {
+static int get_time_in_ms() {
     return (time(NULL) - timeReference)*1000;
 }
 
 /**
  * Écrit dans un fichiers les cases les plus probables à un instant donné.
  * @param m
- * @param mesure
- * @param nomFichier Fichier dans lequel on écrit.
+ * @param measure
+ * @param file_name Fichier dans lequel on écrit.
  */
-void generateData(struct Matrice* m, struct Valeurs* mesure, const char* nomFichier) {
+void generate_data(struct Matrix* m, struct Values* measure, const char* file_name) {
 
     struct listPoints* list = NULL;
-    double distMax;
-    int nbPoints = 5; //nombre de points sélectionnés
+    double max_dist = -1;
+    int nb_points = 5; //nombre de points sélectionnés
 
-    for (int i = 0; i < m->nbColumns; i++) {
-        for (int j = 0; j < m->nbLines; j++) {
+    for (int i = 0; i < m->nb_lines; i++) {
+        for (int j = 0; j < m->nb_columns; j++) {
+	    double tmp_max_dist = INFINITY;
             struct Point point;
             point.x = i;
             point.y = j;
-            point.proba = distance(&m->val[i][j], mesure);
-            distMax = addPoint(&list, point, nbPoints);
+            point.proba = distance(&m->val[i][j], measure);
+	    if (max_dist != -1) {
+		tmp_max_dist = add_point(&list, point, nb_points);
+	    } else {
+		max_dist = add_point(&list, point, nb_points);
+	    }
+	    if (tmp_max_dist < max_dist) {
+		max_dist = tmp_max_dist;
+	    }
         }
     }
 
-    formatProba(list, distMax);
+    format_proba(list, max_dist);
 
     FILE* fichier = NULL;
-    fichier = fopen(nomFichier, "a");
+    fichier = fopen(file_name, "a");
     if (fichier != NULL) {
         //printf("fichier != NULL\n");
-        fprintf(fichier, "d %i\n\n", getTimeInMs());
-        struct listPoints* posCour = list;
-        while (posCour != NULL) {
+        fprintf(fichier, "d %i\n\n", get_time_in_ms());
+	fprintf(fichier, "reset\n\n");
+        struct listPoints* current_pos = list;
+        while (current_pos != NULL) {
             //printf("dans boucle\n");
-            fprintf(fichier, "%i %i %lf\n", posCour->point.x, posCour->point.y, posCour->point.proba);
-            posCour = posCour->next;
+            fprintf(fichier, "%i %i %lf\n", current_pos->point.x, current_pos->point.y, current_pos->point.proba);
+            current_pos = current_pos->next;
         }
         fprintf(fichier, "\n");
         fclose(fichier);
     }
 
-    freeList(list);
+    free_list(list);
 }
 
 
 /**
  * À partir de la matrice de calibration et de 4 séries de mesures,
- * la fonction écrit dans nomFichier les n cases les plus probables.
+ * la fonction écrit dans file_name les n cases les plus probables.
  * @param m La matrice de calibration.
- * @param nomFichier Fichier où enregistrer les données.
- * @param mesures1 Série de mesures 1.
- * @param mesures2 Série de mesures 2.
- * @param mesures3 Série de mesures 3.
- * @param mesures4 Série de mesures 4.
+ * @param file_name Fichier où enregistrer les données.
+ * @param measures1 Série de mesures 1.
+ * @param measures2 Série de mesures 2.
+ * @param measures3 Série de mesures 3.
+ * @param measures4 Série de mesures 4.
  */
-void generateDataFromMesures(struct Matrice* m, const char* nomFichier,
-        char* mesures1, char* mesures2, char* mesures3, char* mesures4) {
+void generate_data_from_measures(struct Matrix* m, const char* file_name,
+        char* measures1, char* measures2, char* measures3, char* measures4) {
     //Conversion en entiers
-    int* mesures1Int = getMesures(mesures1);
-    int* mesures2Int = getMesures(mesures2);
-    int* mesures3Int = getMesures(mesures3);
-    int* mesures4Int = getMesures(mesures4);
+    int* measures1_int = get_measures(measures1);
+    int* measures2_int = get_measures(measures2);
+    int* measures3_int = get_measures(measures3);
+    int* measures4_int = get_measures(measures4);
 
     //Moyenne des différentes mesures stoquées dans un seul tableau.
-    struct Valeurs mesure;
-    mesure.table[0] = moyenneMesures(mesures1Int);
-    mesure.table[1] = moyenneMesures(mesures2Int);
-    mesure.table[2] = moyenneMesures(mesures3Int);
-    mesure.table[3] = moyenneMesures(mesures4Int);
+    struct Values measure;
+    measure.table[0] = mean_measures(measures1_int);
+    measure.table[1] = mean_measures(measures2_int);
+    measure.table[2] = mean_measures(measures3_int);
+    measure.table[3] = mean_measures(measures4_int);
     
     //Génération des données dans un fichier texte
-    generateData(m, &mesure, nomFichier);
+    generate_data(m, &measure, file_name);
 
     //Libération des ressources.
-    free(mesures1Int);
-    free(mesures2Int);
-    free(mesures3Int);
-    free(mesures4Int);
+    free(measures1_int);
+    free(measures2_int);
+    free(measures3_int);
+    free(measures4_int);
 
 }
