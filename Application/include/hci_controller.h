@@ -18,6 +18,7 @@
 #include <stdarg.h>
 
 // Default timeout used to communicate with the adapter using HCI.
+// It it is set to 0, then no timeout will be used and we will we wait until the end of the command.
 #define DEFAULT_TIMEOUT 3000
 
 /* Our hci_controller is a state machine.
@@ -103,7 +104,8 @@ extern void hci_close_socket_controller(hci_controller_t *hci_controller, hci_so
 
 
 /* Function "hci_compute_filter" :
-   Computes an hci_filter using the TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO !!!!
+   Computes an hci_filter using a variable list of uint32_t (corresonding to binary filters
+   to apply) ending by 0 (in order for the va_list to know where it ends).
 */
 extern void hci_compute_filter(struct hci_filter *flt, ...);
 
@@ -112,7 +114,7 @@ extern void hci_compute_filter(struct hci_filter *flt, ...);
    The field "hci_socket" can be either a valid opened socket on a valid Bluetooth adapter
    or NULL in which case we open a new socket on the "hci_controller" given as parameter.
    The field "hci_controller" has to refer to a valid opened hci_controller.
-   The field max_rsp sets the maximum number of scan's response we want to have.
+   The field max_rsp sets the maximum number of scan's responses we want to have.
    FIELD DURATION TODOTODO TODO TODO TODO TODO
  */
 extern bt_device_table_t hci_scan_devices(hci_socket_t *hci_socket, hci_controller_t *hci_controller,

@@ -38,6 +38,11 @@ int8_t l2cap_client_create(l2cap_client_t *client, bdaddr_t *server_add, uint16_
 		return -1;
 	}
 
+	if (!server_add) {
+		print_trace(TRACE_ERROR, "l2cap_client_create : invalid server reference.\n");
+		return -1;
+	}
+
 	if (!buffer_length) {
 		print_trace(TRACE_WARNING, "l2cap_client_create : null buffer, creation aborted.\n");
 		return -1;
