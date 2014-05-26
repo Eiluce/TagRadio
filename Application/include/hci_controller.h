@@ -114,17 +114,54 @@ extern void hci_compute_filter(struct hci_filter *flt, ...);
    The field "hci_socket" can be either a valid opened socket on a valid Bluetooth adapter
    or NULL in which case we open a new socket on the "hci_controller" given as parameter.
    The field "hci_controller" has to refer to a valid opened hci_controller.
-   The field max_rsp sets the maximum number of scan's responses we want to have.
-   FIELD DURATION TODOTODO TODO TODO TODO TODO
- */
+   The field "max_rsp" sets the maximum number of scan's responses we want to have.
+   The field "duration" is the duration (in s) is the duration of the inquiry (*1.28s) 
+*/
 extern bt_device_table_t hci_scan_devices(hci_socket_t *hci_socket, hci_controller_t *hci_controller,
 					  uint8_t duration, uint16_t max_rsp, long flags);
 
+/* Function "hci_compute_device_name" :
+   Computes the name of the BT device "bt_device" by using the socket "hci_socket"
+   or by opening a new one on the "hci_controller".
+   The field "hci_socket" can be either a valid opened socket on a valid Bluetooth adapter
+   or NULL in which case we open a new socket on the "hci_controller" given as parameter.
+   The field "hci_controller" has to refer to a valid opened hci_controller.
+ */
 extern void hci_compute_device_name(hci_socket_t *hci_socket, hci_controller_t *hci_controller, bt_device_t *bt_device);
 
+/* Function "hci_get_RSSI" :
+   Performs a Bluetooth scan with RSSI inquiry by using the socket "hci_socket"
+   or by opening a new one on the "hci_controller".
+   The field "hci_socket" can be either a valid opened socket on a valid Bluetooth adapter
+   or NULL in which case we open a new socket on the "hci_controller" given as parameter.
+   The field "hci_controller" has to refer to a valid opened hci_controller.
+   The field "duration" is the duration (in s) is the duration of the inquiry (*1.28s).
+   The field "mac", if not null, constraints the function to only retrieve RSSI measures
+   for the device matching this address.
+   The field "file_descriptor", if not null, is used to write the measures "on the fly"
+   in a file.
+   On success, a String containing the RSSI measures is returned (can be empty if no
+   measure was taken).
+ */
 extern char *hci_get_RSSI(hci_socket_t *hci_socket, hci_controller_t *hci_controller, int8_t *file_descriptor,
 			 bdaddr_t *mac, uint8_t duration, uint16_t max_rsp);	
 
+0.625 p1066
+/* Function "hci_LE_get_RSSI" :
+   Performs a Low Energy Bluetooth scan with RSSI inquiry by using the socket "hci_socket"
+   or by opening a new one on the "hci_controller".
+   The field "hci_socket" can be either a valid opened socket on a valid Bluetooth adapter
+   or NULL in which case we open a new socket on the "hci_controller" given as parameter.
+   The field "hci_controller" has to refer to a valid opened hci_controller.
+   The field "duration" is the duration (in s) is the duration of the inquiry (*0.625s) => cf p1066 spec'.
+   The field "mac", if not null, constraints the function to only retrieve RSSI measures
+   for the device matching this address.
+   The field "file_descriptor", if not null, is used to write the measures "on the fly"
+   in a file.  
+   For the other fields please refer to p1066 of the specification.
+   On success, a String containing the RSSI measures is returned (can be empty if no
+   measure was taken).
+ */
 extern char *hci_LE_get_RSSI(hci_socket_t *hci_socket, hci_controller_t *hci_controller, int8_t *file_descriptor,
 			    bdaddr_t *mac, uint16_t max_rsp, uint8_t scan_type, uint16_t scan_interval,
 			    uint16_t scan_window, uint8_t own_add_type, uint8_t scan_filter_policy);

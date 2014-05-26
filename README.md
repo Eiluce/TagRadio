@@ -21,6 +21,9 @@ Presentation of the repository
   
 * All of the sources of our software are located in the "Application" directory.
 
+* The visualisation programm's sources can be found in the "Visualiseur" directory while the
+  executable is located in the "Visualiseur_release" directory.
+
 How to run the software
 -----------------------
 
